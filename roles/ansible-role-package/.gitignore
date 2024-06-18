@@ -1,0 +1,16 @@
+## Ansible
+*.retry
+.ansible_cache
+
+## Molecule
+.cache
+.molecule
+.tox
+.vagrant
+
+## Python
+.pytest_cache/
+__pycache__/
+*.py[codz]
+*$py.class
+pytestdebug.log

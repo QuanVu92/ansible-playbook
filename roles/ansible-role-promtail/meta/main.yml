@@ -1,0 +1,34 @@
+galaxy_info:
+  role_name: loki
+  author: Till Klampaeckel
+  description: Install Grafana Loki
+  company: Planetary Quantum GmbH
+  license: BSD-2-Clause
+
+  min_ansible_version: 2.8
+  # platforms:
+  # - name: Fedora
+  #   versions:
+  #   - all
+  #   - 25
+  # - name: SomePlatform
+  #   versions:
+  #   - all
+  #   - 1.0
+  #   - 7
+  #   - 99.99
+
+  platforms:
+    - name: el
+      versions:
+        - 7
+    - name: FreeBSD
+      versions:
+        - all
+
+  galaxy_tags:
+    - promtail
+    - grafana
+    - logging
+    # - loki
+dependencies: []

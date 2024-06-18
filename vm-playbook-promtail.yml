@@ -1,0 +1,12 @@
+---
+- hosts: all
+  become: true
+  
+  roles:
+    - role: ansible-role-promtail
+  vars:
+    loki_version: 2.9.4
+    promtail_listen: 0.0.0.0
+    promtail_client_loki_address: 10.211.68.149
+    item_promtail: "promtail-linux-amd64.zip"
+    promtail_path_get_log: /opt/bitnami/rabbitmq/var/log/rabbitmq/**.log

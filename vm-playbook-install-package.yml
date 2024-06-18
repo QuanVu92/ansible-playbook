@@ -1,0 +1,12 @@
+---
+- hosts: all
+  become: true
+  vars:
+    package_install:
+      - nginx
+ #     - vim
+   # package_remove:
+   #   - nano
+  roles:
+    - role: ansible-role-package
+      
