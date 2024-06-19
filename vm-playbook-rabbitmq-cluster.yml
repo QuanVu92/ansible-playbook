@@ -2,4 +2,16 @@
 - hosts: all
   become: yes
   roles:
-    - role: ansible-role-rabbitmq
+    - role: ansible-rabbitmq-cluster
+  vars:
+    rabbitmq_cluster_master: rabbitmq1
+    update_hosts: true
+    rabbitmq_hosts: |
+     40.81.25.219 rabbitmq1
+     40.81.21.61 rabbitmq2
+    enable_tls: false
+#cert_dir: "{{ playbook_dir }}/../common_files/ssl"
+#cacertfile: "{{ cert_dir }}/cacert.pem"
+#certfile: "{{ cert_dir }}/cert.pem"
+#keyfile: "{{ cert_dir }}/key.pem"
+    backup_queues_in_two_nodes: true
