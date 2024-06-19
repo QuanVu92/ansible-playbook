@@ -1,0 +1,14 @@
+---
+# Setup installation repositories
+# Standart repository for Debian / Ubuntu (https://www.rabbitmq.com/install-debian.html)
+- name: import repository key
+  apt_key:
+    url: https://dl.bintray.com/rabbitmq/Keys/rabbitmq-release-signing-key.asc
+    state: present
+
+- name: add apt repository
+  apt_repository:
+    repo: "deb https://dl.bintray.com/rabbitmq/debian xenial main"
+    update_cache: yes
+    state: present
+
