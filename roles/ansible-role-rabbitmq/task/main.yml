@@ -29,8 +29,8 @@
   ignore_errors: yes
 
 - name: Join RabbitMQ cluster
-  command: sudo rabbitmqctl join_cluster rabbit@rabbitmq1
-  when: inventory_hostname != "rabbitmq1"
+  command: sudo rabbitmqctl join_cluster rabbit@rabbitmq-01
+  when: inventory_hostname != "rabbitmq-01"
 
 - name: Start RabbitMQ app
   command: sudo rabbitmqctl start_app
