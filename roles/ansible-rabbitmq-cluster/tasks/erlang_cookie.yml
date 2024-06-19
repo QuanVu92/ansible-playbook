@@ -9,11 +9,11 @@
   template:
     src: erlang.cookie.j2
     dest: /opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie
-    owner: rabbitmq
-    group: rabbitmq
+    owner: azureuser
+    group: azureuser
     mode: 0400
   notify:
-    stop rabbitmq-server
+    stop_ rabbitmqctl
 
 - meta: flush_handlers
 
