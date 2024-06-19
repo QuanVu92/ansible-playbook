@@ -11,14 +11,14 @@
     line: "{{ item }}"
   with_items: "{{ hosts_entries }}"
 
-- name: Copy security hardening script
-  copy:
-    src: security_debian_hardening.sh
-    dest: /tmp/security_debian_hardening.sh
-    mode: '0755'
+#- name: Copy security hardening script
+ # copy:
+  #  src: security_debian_hardening.sh
+   # dest: /tmp/security_debian_hardening.sh
+    #mode: '0755'
 
-- name: Execute security hardening script
-  command: /tmp/security_debian_hardening.sh
+#- name: Execute security hardening script
+ # command: /tmp/security_debian_hardening.sh
 
 - name: Stop RabbitMQ app
   command: sudo rabbitmqctl stop_app
@@ -29,8 +29,8 @@
   ignore_errors: yes
 
 - name: Join RabbitMQ cluster
-  command: sudo rabbitmqctl join_cluster rabbit@rabbitmq-01
-  when: inventory_hostname != "rabbitmq-01"
+  command: sudo rabbitmqctl join_cluster rabbit@rabbitmq1
+  when: inventory_hostname != "rabbitmq1"
 
 - name: Start RabbitMQ app
   command: sudo rabbitmqctl start_app
