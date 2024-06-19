@@ -13,7 +13,7 @@
     group: azureuser
     mode: 0400
   notify:
-    stop_ rabbitmqctl
+    stop_app rabbitmqctl
 
 - meta: flush_handlers
 
