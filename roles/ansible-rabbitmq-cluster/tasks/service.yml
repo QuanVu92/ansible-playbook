@@ -1,8 +1,8 @@
 ---
 - name: rabbitmq service started and enabled
   service:
-    name: rabbitmq-server
+    name: rabbitmqctl
     enabled: yes
-    state: started
+    state: start_app
 
 
