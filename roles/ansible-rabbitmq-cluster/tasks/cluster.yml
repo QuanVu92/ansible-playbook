@@ -1,8 +1,8 @@
 ---
 - name: make sure rabbitmq server is up
   service:
-    name: rabbitmq-server
-    state: started
+    name: rabbitmqctl
+    state: start_app
 
 - name: make sure rabbitmq app is up
   command: rabbitmqctl start_app
