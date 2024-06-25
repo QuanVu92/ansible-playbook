@@ -7,8 +7,8 @@
     rabbitmq_cluster_master: rabbitmq1
     update_hosts: true
     rabbitmq_hosts: |
-     52.184.83.227 rabbitmq1
-     52.139.170.244 rabbitmq2
+     52.184.83.227 rabbitmq01
+     52.139.170.244 rabbitmq02
     enable_tls: false
 #cert_dir: "{{ playbook_dir }}/../common_files/ssl"
 #cacertfile: "{{ cert_dir }}/cacert.pem"
