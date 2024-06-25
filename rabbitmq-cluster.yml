@@ -42,6 +42,11 @@
     - name: Ensure management plugin is enabled
       command: "/opt/bitnami/rabbitmq/sbin/rabbitmq-plugins enable rabbitmq_management"
       notify: Restart RabbitMQ
+      
+    - name: Stop RabbitMQ application
+      command: rabbitmqctl stop_app
+      ignore_errors: yes
+      when: inventory_hostname != "rabbitmq01"
 
   handlers:
     - name: Restart RabbitMQ
