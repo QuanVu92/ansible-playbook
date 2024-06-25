@@ -1,0 +1,55 @@
+---
+- name: Configure RabbitMQ Cluster
+  hosts: rabbitmq_servers
+  become: yes
+  tasks:
+    - name: Ensure RabbitMQ is started and enabled
+      service:
+        name: rabbitmq
+        state: started
+        enabled: yes
+
+    - name: Ensure the erlang cookie file exists
+      stat:
+        path: /opt/bitnami/rabbitmq/.erlang.cookie
+      register: erlang_cookie_file
+
+    - name: Fetch the erlang cookie from the first node
+      fetch:
+        src: /opt/bitnami/rabbitmq/.erlang.cookie
+        dest: /tmp/.erlang.cookie
+        flat: yes
+      when: inventory_hostname == "rabbitmq01"
+
+    - name: Distribute the erlang cookie to other nodes
+      copy:
+        src: /tmp/.erlang.cookie
+        dest: /opt/bitnami/rabbitmq/.erlang.cookie
+        owner: rabbitmq
+        group: rabbitmq
+        mode: '0600'
+      when: inventory_hostname != "rabbitmq01"
+
+    - name: Restart RabbitMQ service to apply the cookie
+      service:
+        name: rabbitmq
+        state: restarted
+      when: inventory_hostname != "rabbitmq01"
+
+    - name: Join RabbitMQ cluster
+      command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq01"
+      when: inventory_hostname != "rabbitmq01"
+
+    - name: Set RabbitMQ cluster name
+      command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_cluster_name my_rabbit_cluster"
+      when: inventory_hostname == "rabbitmq01"
+
+    - name: Ensure management plugin is enabled
+      command: "/opt/bitnami/rabbitmq/sbin/rabbitmq-plugins enable rabbitmq_management"
+      notify: Restart RabbitMQ
+
+  handlers:
+    - name: Restart RabbitMQ
+      service:
+        name: rabbitmq
+        state: restarted
