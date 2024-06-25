@@ -1,6 +1,6 @@
 ---
 - name: Configure RabbitMQ Cluster
-  hosts: rabbitmq_servers
+  hosts: all
   become: yes
   tasks:
     - name: Ensure RabbitMQ is started and enabled
