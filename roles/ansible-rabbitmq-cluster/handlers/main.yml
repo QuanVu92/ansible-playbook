@@ -1,11 +1,11 @@
 ---
 # Handlers for RabbitMQ
 - name: reset rabbitmqctl
-  service: name=rabbitmqctl state=reset
+  command: rabbitmqctl reset
 
 - name: start_app rabbitmqctl
-  service: name=rabbitmqctl state=start_app
+  command: rabbitmqctl start_app
 
 - name: stop_app rabbitmqctl
-  service: name=rabbitmqctl state=stop_app
+  command: rabbitmqctl stop_app
 
