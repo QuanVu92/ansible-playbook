@@ -4,10 +4,7 @@
   become: yes
   tasks:
     - name: Ensure RabbitMQ is started and enabled
-      service:
-        name: rabbitmq
-        state: started
-        enabled: yes
+      command: rabbitmqctl start_app
 
     - name: Ensure the erlang cookie file exists
       stat:
@@ -31,9 +28,7 @@
       when: inventory_hostname != "rabbitmq01"
 
     - name: Restart RabbitMQ service to apply the cookie
-      service:
-        name: rabbitmq
-        state: restarted
+      command: rabbitmqctl reset
       when: inventory_hostname != "rabbitmq01"
 
     - name: Join RabbitMQ cluster
@@ -50,6 +45,5 @@
 
   handlers:
     - name: Restart RabbitMQ
-      service:
-        name: rabbitmq
-        state: restarted
+      command: rabbitmqctl reset
+
