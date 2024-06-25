@@ -31,6 +31,10 @@
       command: rabbitmqctl reset
       when: inventory_hostname != "rabbitmq01"
 
+    - name: Restart RabbitMQ service to apply the cookie
+      command: rabbitmqctl reset
+      when: inventory_hostname != "rabbitmq01"
+
     - name: Join RabbitMQ cluster
       command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq01"
       when: inventory_hostname != "rabbitmq01"
