@@ -11,12 +11,12 @@
 
     - name: Ensure the erlang cookie file exists
       stat:
-        path: /opt/bitnami/rabbitmq/.erlang.cookie
+        path: /opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie
       register: erlang_cookie_file
 
     - name: Fetch the erlang cookie from the first node
       fetch:
-        src: /opt/bitnami/rabbitmq/.erlang.cookie
+        src: /opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie
         dest: /tmp/.erlang.cookie
         flat: yes
       when: inventory_hostname == "rabbitmq01"
@@ -24,7 +24,7 @@
     - name: Distribute the erlang cookie to other nodes
       copy:
         src: /tmp/.erlang.cookie
-        dest: /opt/bitnami/rabbitmq/.erlang.cookie
+        dest: /opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie
         owner: rabbitmq
         group: rabbitmq
         mode: '0600'
