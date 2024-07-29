@@ -1,17 +1,62 @@
 ---
-- hosts: all
+- name: Configure RabbitMQ Master
+  hosts: rabbitmq01
   become: yes
-  roles:
-    - role: ansible-rabbitmq-cluster
-  vars:
-    rabbitmq_cluster_master: rabbitmq1
-    update_hosts: true
-    rabbitmq_hosts: |
-     52.184.83.227 rabbitmq01
-     52.139.170.244 rabbitmq02
-    enable_tls: false
-#cert_dir: "{{ playbook_dir }}/../common_files/ssl"
-#cacertfile: "{{ cert_dir }}/cacert.pem"
-#certfile: "{{ cert_dir }}/cert.pem"
-#keyfile: "{{ cert_dir }}/key.pem"
-    backup_queues_in_two_nodes: true
+  tasks:
+    - name: Ensure RabbitMQ server is running
+      command: /opt/bitnami/rabbitmq/sbin/rabbitmq-server -detached
+      args:
+        creates: /opt/bitnami/rabbitmq/var/lib/rabbitmq/mnesia
+        warn: false
+
+    - name: Add erlang cookie
+      copy:
+        dest: /opt/bitnami/rabbitmq/.erlang.cookie
+        content: "{{ rabbitmq_erlang_cookie }}"
+        owner: rabbitmq
+        group: rabbitmq
+        mode: '0400'
+
+    - name: Enable RabbitMQ management plugin
+      command: /opt/bitnami/rabbitmq/sbin/rabbitmq-plugins enable rabbitmq_management
+      args:
+        creates: /opt/bitnami/rabbitmq/var/lib/rabbitmq/plugins/rabbitmq_management.ez
+
+    - name: Create user for clustering
+      command: /opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}
+      args:
+        creates: /opt/bitnami/rabbitmq/var/lib/rabbitmq/mnesia
+
+    - name: Set user tags and permissions
+      command:
+        cmd: >
+          /opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator &&
+          /opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} ".*" ".*" ".*"
+
+- name: Join RabbitMQ Cluster
+  hosts: rabbitmq02
+  become: yes
+  tasks:
+    - name: Ensure RabbitMQ server is running
+      command: /opt/bitnami/rabbitmq/sbin/rabbitmq-server -detached
+      args:
+        creates: /opt/bitnami/rabbitmq/var/lib/rabbitmq/mnesia
+        warn: false
+
+    - name: Add erlang cookie
+      copy:
+        dest: /opt/bitnami/rabbitmq/.erlang.cookie
+        content: "{{ rabbitmq_erlang_cookie }}"
+        owner: rabbitmq
+        group: rabbitmq
+        mode: '0400'
+
+    - name: Stop RabbitMQ app
+      command: /opt/bitnami/rabbitmq/sbin/rabbitmqctl stop_app
+
+    - name: Join RabbitMQ cluster
+      command: /opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq01
+
+    - name: Start RabbitMQ app
+      command: /opt/bitnami/rabbitmq/sbin/rabbitmqctl start_app
+
