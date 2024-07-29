@@ -2,6 +2,10 @@
 - name: Configure RabbitMQ Master
   hosts: rabbitmq01
   become: yes
+  vars:
+    rabbitmq_erlang_cookie: "797958d9a756907baad83e25d127c841778b8ad391a9b12720910cbdb134594b"
+    rabbitmq_user: "user"
+    rabbitmq_password: "kd:Jl.ES0Ui+"
   tasks:
     - name: Ensure RabbitMQ server is running
       command: /opt/bitnami/rabbitmq/sbin/rabbitmq-server -detached
