@@ -1,10 +1,7 @@
 ---
-- name: Add or update user password
+- name: Playbook to execute changepassword role
   hosts: all
-  
-  tasks:
-  - name: Change “george” password
-    user:
-      name: quan.vuvan
-      update_password: always
-      password: "{{ newpassword|password_hash('sha512’) }}”
+  become: yes
+
+  roles:
+    - changepassword
