@@ -1,1 +1,19 @@
+---
+# tasks/main.yml
 
+- name: Copy file to destination
+  copy:
+    src: quantest.sh  # The file should be located in the 'files' directory of the role
+    dest: /home/quan.vuvan/quantest.sh
+    mode: '0755'  # Ensure the script is executable
+
+- name: Create a cron job to run cfile.sh
+  cron:
+    name: "This job is scheduled by Ansible"
+    minute: "0"
+    hour: "10"
+    day: "*"
+    month: "*"
+    weekday: "4"
+    user: root
+    job: "/home/quan.vuvan/quantest.sh"
