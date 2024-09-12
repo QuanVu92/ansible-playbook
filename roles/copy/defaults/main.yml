@@ -1,1 +1,4 @@
+# defaults/main.yml
 
+src_file: cfile.sh
+dest_file: /home/iafzal/cfile.sh
