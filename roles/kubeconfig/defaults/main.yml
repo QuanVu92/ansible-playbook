@@ -1,0 +1,3 @@
+# defaults/main.yml
+
+ansible_user: "default_user"
