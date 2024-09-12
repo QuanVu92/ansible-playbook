@@ -5,6 +5,6 @@
   tasks:
   - name: Change “george” password
     user:
-      name: george
+      name: quan.vuvan
       update_password: always
       password: "{{ newpassword|password_hash('sha512’) }}”
