@@ -1,1 +1,13 @@
+---
+# tasks/main.yml
 
+- name: Copy shell script to destination
+  copy:
+    src: quan.sh
+    dest: /home/quan.vuvan/quan.sh
+    mode: '0755'
+
+- name: Run the shell script
+  shell: "/home/quan.vuvan/quan.sh"
+  args:
+    chdir: /home/quan.vuvan  # Optional: if you want to run the script from the specific directory
