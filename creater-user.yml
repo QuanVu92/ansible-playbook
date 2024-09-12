@@ -3,16 +3,4 @@
   become: true
   roles:
     - role: ansible-role-create-users
-    
-  vars:
-    users:
-      - username: quanvv01
-        ssh_key: |
-          ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDCx+VeLJekEWoueyBPxFKSTx+ki4v7+g3TjtlLxq1ibypyM0M2YgisvBOxqn19UD92jBnLecvflzBX4Eczgx8XyLA8uFWXkV3NG5uhWzj/IGjpJdhKeswqZqgNxNM4/ywqviP60JI0Ajy3c6ydyw2dahpi0GmFG0oUadAc/aQO+5nlDwg3yAXA33KPfiB02htfdxFjQDSIzXW13utL3d5myz4P+InqPQZZwawfueYXGN2bsysqXckCrL70ySXHhebhfqdoz2mpcJ5w383N3QP2TJjBt1bL3P3UUHZvFrxOiwbAB+geTiOjd3+BcDV6Nh5IHxHTkhuYBwkuoil9sYA4UFh5/nEjcCKEBNLC5E9nm6Tl960dp2Ib37ycY0cyRKL4R9Vo9M767HGtzgieH59OYsNv4E1VqV6nxbSZYvDfsYoG3rM9YOskM1rDmYkcDz+SuYXvIRrwUi+h7aHeeOWGNQ2XqsHnwo/0XjP2GANQ7YfvgHKOK0x6HVzoAElsHi8= testuser101
-        comment: quanvv01
-        shell: /bin/bash
-        use_sudo: no
-        use_sudo_nopass: no
-        user_state: delete
-        servers:
-          - all
+
