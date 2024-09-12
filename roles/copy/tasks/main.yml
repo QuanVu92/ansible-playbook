@@ -1,1 +1,8 @@
+---
+# tasks/main.yml
 
+- name: Copy file to destination
+  copy:
+    src: "{{ src_file }}"  # Source file from the 'files' directory
+    dest: "{{ dest_file }}"  # Destination path
+    mode: '0755'  # Set permissions
