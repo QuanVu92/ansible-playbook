@@ -4,4 +4,4 @@
   
   tasks:
   - name: Run shell script
-    shell: “/home/quan.vuvan/quan.sh”
+    shell: "/home/quan.vuvan/quan.sh"
