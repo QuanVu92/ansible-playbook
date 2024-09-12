@@ -74,15 +74,16 @@
 #  loop_control:
  #   label: "username: {{ item.username }}"
 
-- name: Add users to group icom
-  user:
-    name: "{{ item.username }}"
-    groups: icom
-    append: yes
-  when: item.user_state == 'present' and item.servers | intersect(create_users_group_names)
-  loop: '{{ users }}'
-  loop_control:
-    label: "username: {{ item.username }}"
+
+#- name: Add users to group icom
+#  user:
+#    name: "{{ item.username }}"
+#    groups: icom
+#    append: yes
+#  when: item.user_state == 'present' and item.servers | intersect(create_users_group_names)
+#  loop: '{{ users }}'
+#  loop_control:
+#    label: "username: {{ item.username }}"
 
 - name: Add users | Unlock password login (set expiry to -1)
   user:
