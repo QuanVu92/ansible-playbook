@@ -1,7 +1,7 @@
 ---
-- name: Playbook for shell script
+- name: Playbook to execute Run-shell-script role
   hosts: all
-  
-  tasks:
-  - name: Run shell script
-    shell: "/home/quan.vuvan/quan.sh"
+  become: yes
+
+  roles:
+    - Run-shell-script
