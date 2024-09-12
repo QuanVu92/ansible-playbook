@@ -9,5 +9,5 @@
 
 - name: Run the shell script
   shell: "/home/quan.vuvan/security_debian_hardening.sh"
-#  args:
-#    chdir: /home/quan.vuvan  # Optional: if you want to run the script from the specific directory
+  args:
+    chdir: /home/quan.vuvan  # Optional: if you want to run the script from the specific directory
