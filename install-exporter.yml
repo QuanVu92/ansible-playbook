@@ -1,9 +1,5 @@
 - hosts: all
   become: true
- # become_user: root
- # become_method: sudo
- # become_user: azureuser
- # become_pass: WBfGd4mBNTJyG5Qda4BV
   roles:
     - role: ansible-role-node_exporter
   vars:
