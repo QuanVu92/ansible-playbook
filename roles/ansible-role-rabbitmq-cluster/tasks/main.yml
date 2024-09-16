@@ -1,20 +1,14 @@
 ---
-- name: Update /etc/hosts for rabbitmq01
-  lineinfile:
-    path: /etc/hosts
-    line: "10.10.10.94 rabbitmq01"
-    state: present
-
-- name: Update /etc/hosts for rabbitmq02
-  lineinfile:
-    path: /etc/hosts
-    line: "10.10.10.95 rabbitmq02"
-    state: present
-
 - name: Update /etc/hosts for rabbitmq03
   lineinfile:
     path: /etc/hosts
-    line: "10.10.10.96 rabbitmq03"
+    line: "104.214.179.118 rabbitmq03"
+    state: present
+
+- name: Update /etc/hosts for rabbitmq04
+  lineinfile:
+    path: /etc/hosts
+    line: "40.81.25.179 rabbitmq04"
     state: present
 
 - name: Set RABBITMQ_MNESIA_BASE environment variable
