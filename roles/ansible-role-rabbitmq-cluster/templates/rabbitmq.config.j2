@@ -1,0 +1,8 @@
+[
+  {rabbit, [
+    {loopback_users, []},
+    {cluster_nodes, {['rabbit@rabbitmq01', 'rabbit@rabbitmq02'], disc}},
+    {default_user, <<"{{ rabbitmq_user }}">},
+    {default_pass, <<"{{ rabbitmq_password }}">}
+  ]}
+].
