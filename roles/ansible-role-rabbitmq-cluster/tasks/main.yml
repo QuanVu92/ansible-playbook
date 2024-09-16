@@ -1,0 +1,37 @@
+---
+- name: Ensure RabbitMQ is running
+  systemd:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+
+- name: Set the Erlang cookie
+  copy:
+    content: "{{ rabbitmq_erlang_cookie }}"
+    dest: /opt/bitnami/rabbitmq/.erlang.cookie
+    owner: rabbitmq
+    group: rabbitmq
+    mode: '0400'
+  notify: Restart RabbitMQ
+
+- name: Stop RabbitMQ application
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl stop_app"
+  when: inventory_hostname != 'rabbitmq01'
+
+- name: Join the RabbitMQ cluster
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq01"
+  when: inventory_hostname != 'rabbitmq01'
+  notify: Restart RabbitMQ
+
+- name: Start RabbitMQ application
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl start_app"
+  when: inventory_hostname != 'rabbitmq01'
+
+- name: Set RabbitMQ user permissions
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
+
+- name: Configure RabbitMQ using template
+  template:
+    src: rabbitmq.config.j2
+    dest: /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq.config
+  notify: Restart RabbitMQ
