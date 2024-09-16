@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: your_name
+  description: Ansible role to configure RabbitMQ cluster using Bitnami RabbitMQ VMs
+  license: MIT
+  platforms:
+    - name: Ubuntu
+      versions:
+        - bionic
+        - focal
+
+dependencies: []
