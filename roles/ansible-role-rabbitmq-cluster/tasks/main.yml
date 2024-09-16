@@ -21,6 +21,7 @@
 - name: Join the RabbitMQ cluster
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq01"
   when: inventory_hostname != 'rabbitmq01'
+  ignore_errors: yes
   notify: Restart RabbitMQ
 
 - name: Start RabbitMQ application
