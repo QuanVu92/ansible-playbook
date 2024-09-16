@@ -1,4 +1,0 @@
-hosts_entries:
-  - "10.7.1.4 rabbitmq1"
-  - "10.7.1.5 rabbitmq2"
-  - #"10.0.1.6 rabbitmq3"
