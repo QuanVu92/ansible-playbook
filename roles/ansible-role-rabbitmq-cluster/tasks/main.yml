@@ -26,7 +26,8 @@
   when: inventory_hostname in ['rabbitmq03', 'rabbitmq04']
 
 - name: Restart RabbitMQ service
-  command: /opt/bitnami/rabbitmq/ctlscript.sh restart rabbitmq
+ # command: /opt/bitnami/rabbitmq/ctlscript.sh restart rabbitmq
+  command: /opt/bitnami/ctlscript.sh restart rabbitmq
 
 - name: Add RabbitMQ admin user
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
