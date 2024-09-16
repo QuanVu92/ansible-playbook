@@ -1,9 +1,9 @@
 ---
-- name: Ensure RabbitMQ is running
-  systemd:
-    name: rabbitmq-server
-    state: started
-    enabled: yes
+#- name: Ensure RabbitMQ is running
+#systemd:
+#    name: rabbitmq-server
+#    state: started
+ #   enabled: yes
 
 - name: Set the Erlang cookie
   copy:
