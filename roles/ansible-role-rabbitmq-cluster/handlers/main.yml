@@ -1,4 +1,3 @@
 ---
-handlers:
   - name: Restart RabbitMQ
     command: "/opt/bitnami/ctlscript.sh restart rabbitmq"
