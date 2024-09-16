@@ -8,5 +8,8 @@ galaxy_info:
       versions:
         - bionic
         - focal
+    - name: Debian
+      versions:
+        - 12
 
 dependencies: []
