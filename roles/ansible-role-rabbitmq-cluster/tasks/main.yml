@@ -1,4 +1,48 @@
 ---
+- name: Update /etc/hosts for rabbitmq01
+  lineinfile:
+    path: /etc/hosts
+    line: "10.10.10.94 rabbitmq01"
+    state: present
+
+- name: Update /etc/hosts for rabbitmq02
+  lineinfile:
+    path: /etc/hosts
+    line: "10.10.10.95 rabbitmq02"
+    state: present
+
+- name: Update /etc/hosts for rabbitmq03
+  lineinfile:
+    path: /etc/hosts
+    line: "10.10.10.96 rabbitmq03"
+    state: present
+
+- name: Set RABBITMQ_MNESIA_BASE environment variable
+  lineinfile:
+    path: /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq-env.conf
+    line: "RABBITMQ_MNESIA_BASE=/datadisk1/rabbitmq"
+    state: present
+
+- name: Set NODENAME for rabbitmq02
+  lineinfile:
+    path: /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq-env.conf
+    regexp: '^NODENAME='
+    line: 'NODENAME=rabbit@rabbitmq02'
+    state: present
+
+- name: Restart RabbitMQ service
+  command: /opt/bitnami/rabbitmq/ctlscript.sh restart rabbitmq
+
+- name: Add RabbitMQ admin user
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
+  args:
+    creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
+
+- name: Set admin user as administrator
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
+
+- name: Set admin user permissions
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
 #- name: Ensure RabbitMQ is running
 #systemd:
 #    name: rabbitmq-server
