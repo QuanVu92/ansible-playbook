@@ -35,8 +35,8 @@
 
 - name: Add RabbitMQ admin user
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
-  args:
-    creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
+  #args:
+  #  creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
 
 - name: Set admin user as administrator
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
