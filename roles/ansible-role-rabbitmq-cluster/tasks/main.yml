@@ -23,12 +23,13 @@
     line: "RABBITMQ_MNESIA_BASE=/datadisk1/rabbitmq"
     state: present
 
-- name: Set NODENAME for rabbitmq02
+- name: Set NODENAME for rabbitmq03 or rabbitmq04
   lineinfile:
     path: /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq-env.conf
     regexp: '^NODENAME='
-    line: 'NODENAME=rabbit@rabbitmq02'
+    line: 'NODENAME=rabbit@{{ inventory_hostname }}'
     state: present
+  when: inventory_hostname in ['rabbitmq03', 'rabbitmq04']
 
 - name: Restart RabbitMQ service
   command: /opt/bitnami/rabbitmq/ctlscript.sh restart rabbitmq
