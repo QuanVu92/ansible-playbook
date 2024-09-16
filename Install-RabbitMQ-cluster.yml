@@ -4,6 +4,6 @@
   roles:
     - ansible-role-rabbitmq-cluster
   vars:
-    rabbitmq_user: "admin"
-    rabbitmq_password: "Abc@4321"
+   # rabbitmq_user: "admin"
+   # rabbitmq_password: "Abc@4321"
     rabbitmq_erlang_cookie: "6cd26acbacc59c805c9457e94686ce34aa68c3bd5cc446938cbde4012df30820"
