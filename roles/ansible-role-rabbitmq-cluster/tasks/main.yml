@@ -55,17 +55,17 @@
 
 - name: Stop RabbitMQ application
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl stop_app"
-  when: inventory_hostname != 'rabbitmq01'
+  when: inventory_hostname != 'rabbitmq03'
 
 - name: Join the RabbitMQ cluster
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq01"
-  when: inventory_hostname != 'rabbitmq01'
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq03"
+  when: inventory_hostname != 'rabbitmq03'
   ignore_errors: yes
   notify: Restart RabbitMQ
 
 - name: Start RabbitMQ application
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl start_app"
-  when: inventory_hostname != 'rabbitmq01'
+  when: inventory_hostname != 'rabbitmq03'
 
 - name: Set RabbitMQ user permissions
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
