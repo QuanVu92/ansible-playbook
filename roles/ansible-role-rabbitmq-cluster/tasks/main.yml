@@ -8,7 +8,7 @@
 - name: Set the Erlang cookie
   copy:
     content: "{{ rabbitmq_erlang_cookie }}"
-    dest: /opt/bitnami/rabbitmq/.erlang.cookie
+    dest: /opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie
     owner: rabbitmq
     group: rabbitmq
     mode: '0400'
