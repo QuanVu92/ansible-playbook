@@ -1,9 +1,0 @@
----
-- name: rabbitmq service started and enabled
-  command: rabbitmqctl start_app
- # service:
- #   name: rabbitmqctl
- #   enabled: yes
- #   state: start_app
-
-
