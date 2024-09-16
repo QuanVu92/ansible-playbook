@@ -1,5 +1,4 @@
 ---
-- name: Restart RabbitMQ
-  systemd:
-    name: rabbitmq-server
-    state: restarted
+handlers:
+  - name: Restart RabbitMQ
+    command: "/opt/bitnami/ctlscript.sh restart rabbitmq"
