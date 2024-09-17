@@ -28,8 +28,8 @@
     state: present
   when: inventory_hostname in ['rabbitmq05', 'rabbitmq06']
 
-- name: Restart RabbitMQ service
-  command: /opt/bitnami/ctlscript.sh restart rabbitmq
+#- name: Restart RabbitMQ service
+#  command: sudo gonit restart rabbitmq
 
 - name: Add RabbitMQ admin user
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
