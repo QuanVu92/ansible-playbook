@@ -10,7 +10,10 @@
     path: /etc/hosts
     line: "40.81.25.179 rabbitmq04"
     state: present
-
+    
+- name: Change ownership of /datadisk1/rabbitmq
+  command: "sudo chown -R rabbitmq:rabbitmq /datadisk1/rabbitmq"
+  
 - name: Set RABBITMQ_MNESIA_BASE environment variable
   lineinfile:
     path: /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq-env.conf
