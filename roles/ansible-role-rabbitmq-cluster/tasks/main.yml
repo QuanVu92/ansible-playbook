@@ -26,19 +26,18 @@
   when: inventory_hostname in ['rabbitmq03', 'rabbitmq04']
 
 - name: Restart RabbitMQ service
- # command: /opt/bitnami/rabbitmq/ctlscript.sh restart rabbitmq
   command: /opt/bitnami/ctlscript.sh restart rabbitmq
 
-- name: Add RabbitMQ admin user
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
-  args:
-    creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
+# - name: Add RabbitMQ admin user
+  # command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
+  # args:
+    # creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
 
-- name: Set admin user as administrator
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
+# - name: Set admin user as administrator
+  # command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
 
-- name: Set admin user permissions
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
+# - name: Set admin user permissions
+  # command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
 
 - name: Set the Erlang cookie
   copy:
