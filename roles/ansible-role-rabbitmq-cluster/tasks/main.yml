@@ -69,4 +69,4 @@
   template:
     src: rabbitmq.config.j2
     dest: /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq.config
-  notify: Restart RabbitMQ
+  #notify: Restart RabbitMQ
