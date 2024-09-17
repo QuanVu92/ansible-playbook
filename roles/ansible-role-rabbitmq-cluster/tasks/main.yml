@@ -1,14 +1,14 @@
 ---
-- name: Update /etc/hosts for rabbitmq03
+- name: Update /etc/hosts for rabbitmq05
   lineinfile:
     path: /etc/hosts
-    line: "104.214.179.118 rabbitmq03"
+    line: "40.81.23.178 rabbitmq05"
     state: present
 
-- name: Update /etc/hosts for rabbitmq04
+- name: Update /etc/hosts for rabbitmq06
   lineinfile:
     path: /etc/hosts
-    line: "40.81.25.179 rabbitmq04"
+    line: "20.189.116.193 rabbitmq06"
     state: present
     
 - name: Change ownership of /datadisk1/rabbitmq
@@ -20,27 +20,27 @@
     line: "RABBITMQ_MNESIA_BASE=/datadisk1/rabbitmq"
     state: present
 
-- name: Set NODENAME for rabbitmq03 or rabbitmq04
+- name: Set NODENAME for rabbitmq05 or rabbitmq06
   lineinfile:
     path: /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq-env.conf
     regexp: '^NODENAME='
     line: 'NODENAME=rabbit@{{ inventory_hostname }}'
     state: present
-  when: inventory_hostname in ['rabbitmq03', 'rabbitmq04']
+  when: inventory_hostname in ['rabbitmq05', 'rabbitmq06']
 
 - name: Restart RabbitMQ service
   command: /opt/bitnami/ctlscript.sh restart rabbitmq
 
-# - name: Add RabbitMQ admin user
-  # command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
+- name: Add RabbitMQ admin user
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
   # args:
     # creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
 
-# - name: Set admin user as administrator
-  # command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
+- name: Set admin user as administrator
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
 
-# - name: Set admin user permissions
-  # command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
+- name: Set admin user permissions
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
 
 - name: Set the Erlang cookie
   copy:
@@ -53,20 +53,20 @@
 
 - name: Stop RabbitMQ application
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl stop_app"
-  when: inventory_hostname != 'rabbitmq03'
+  when: inventory_hostname != 'rabbitmq05'
 
 - name: Join the RabbitMQ cluster
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq03"
-  when: inventory_hostname != 'rabbitmq03'
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl join_cluster rabbit@rabbitmq05"
+  when: inventory_hostname != 'rabbitmq05'
   ignore_errors: yes
   notify: Restart RabbitMQ
 
 - name: Start RabbitMQ application
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl start_app"
-  when: inventory_hostname != 'rabbitmq03'
+  when: inventory_hostname != 'rabbitmq05'
 
-- name: Set RabbitMQ user permissions
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
+#- name: Set RabbitMQ user permissions
+#  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
 
 - name: Configure RabbitMQ using template
   template:
