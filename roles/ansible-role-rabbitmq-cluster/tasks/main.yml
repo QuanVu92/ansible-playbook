@@ -43,7 +43,8 @@
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
   retries: 5
   delay: 10
-  until: add_user_result is succeeded
+  #until: add_user_result is succeeded
+  until: add_user_result.rc == 0  # Correct condition
   # args:
     # creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
 
