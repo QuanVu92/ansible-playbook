@@ -1,6 +1,0 @@
----
-- name: Playbook to execute Run-shell-script role
-  hosts: all
-  become: yes
-  roles:
-    - Run-shell-script
