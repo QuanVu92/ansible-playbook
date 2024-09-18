@@ -43,10 +43,7 @@
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
   retries: 5
   delay: 10
-  #until: add_user_result is succeeded
-  until: add_user_result.rc == 0  # Correct condition
-  # args:
-    # creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
+  until: add_user_result is defined and add_user_result.rc == 0
 
 - name: Set admin user as administrator
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
