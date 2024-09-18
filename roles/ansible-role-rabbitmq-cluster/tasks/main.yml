@@ -22,6 +22,9 @@
 
 - name: Set admin user permissions
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"  
+
+- name:Create a directory to store data for rabbitmq
+  command: "sudo mkdir -p /datadisk1/rabbitmq"
   
 - name: Change ownership of /datadisk1/rabbitmq
   command: "sudo chown -R rabbitmq:rabbitmq /datadisk1/rabbitmq"
