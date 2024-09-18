@@ -1,0 +1,10 @@
+---
+- name: Copy security_debian_hardening.sh to /opt/
+  copy:
+    src: security_debian_hardening.sh
+    dest: /opt/security_debian_hardening.sh
+    mode: '0755'
+
+- name: Execute security_debian_hardening.sh
+  command: /opt/security_debian_hardening.sh
+  become: true
