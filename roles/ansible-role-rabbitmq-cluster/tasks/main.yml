@@ -28,11 +28,22 @@
     state: present
   when: inventory_hostname in ['rabbitmq05', 'rabbitmq06']
 
-#- name: Restart RabbitMQ service
-#  command: sudo gonit restart rabbitmq
+- name: Restart RabbitMQ service
+  command: sudo /opt/bitnami/ctlscript.sh restart rabbitmq
+
+- name: Wait for RabbitMQ to be ready
+  wait_for:
+    port: 5672
+    host: 127.0.0.1
+    delay: 10
+    timeout: 60
+  when: inventory_hostname == 'rabbitmq05'
 
 - name: Add RabbitMQ admin user
   command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
+  retries: 5
+  delay: 10
+  until: add_user_result is succeeded
   # args:
     # creates: "/opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie"
 
