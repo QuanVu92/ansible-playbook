@@ -11,6 +11,18 @@
     line: "20.189.116.193 rabbitmq06"
     state: present
     
+- name: Add RabbitMQ admin user
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
+#  retries: 5
+#  delay: 10
+ # until: add_user_result is defined and add_user_result.rc == 0
+
+- name: Set admin user as administrator
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
+
+- name: Set admin user permissions
+  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"  
+  
 - name: Change ownership of /datadisk1/rabbitmq
   command: "sudo chown -R rabbitmq:rabbitmq /datadisk1/rabbitmq"
   
@@ -38,18 +50,6 @@
     delay: 10
     timeout: 60
   when: inventory_hostname == 'rabbitmq05'
-
-- name: Add RabbitMQ admin user
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }}"
-  retries: 5
-  delay: 10
-  until: add_user_result is defined and add_user_result.rc == 0
-
-- name: Set admin user as administrator
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator"
-
-- name: Set admin user permissions
-  command: "/opt/bitnami/rabbitmq/sbin/rabbitmqctl set_permissions -p / {{ rabbitmq_user }} '.*' '.*' '.*'"
 
 - name: Set the Erlang cookie
   copy:
