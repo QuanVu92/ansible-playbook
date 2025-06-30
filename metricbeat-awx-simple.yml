@@ -1,0 +1,255 @@
+---
+- name: Install Metricbeat - AWX Template
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Basic configuration - có thể override từ AWX Extra Variables
+    elasticsearch_hosts: "{{ elasticsearch_hosts | default(['localhost:9200']) }}"
+    kibana_host: "{{ kibana_host | default('localhost:5601') }}"
+    metricbeat_version: "{{ metricbeat_version | default('8.x') }}"
+    
+    # Service configuration
+    metricbeat_service_state: "{{ metricbeat_service_state | default('started') }}"
+    metricbeat_service_enabled: "{{ metricbeat_service_enabled | default(true) }}"
+    
+    # Setup configuration
+    setup_dashboards: "{{ setup_dashboards | default(true) }}"
+    setup_template: "{{ setup_template | default(true) }}"
+    
+    # Monitoring modules - có thể enable/disable từ AWX
+    enable_system_module: "{{ enable_system_module | default(true) }}"
+    enable_docker_module: "{{ enable_docker_module | default(false) }}"
+    enable_nginx_module: "{{ enable_nginx_module | default(false) }}"
+    enable_postgresql_module: "{{ enable_postgresql_module | default(false) }}"
+
+  tasks:
+    - name: Display target information
+      debug:
+        msg:
+          - "Target host: {{ inventory_hostname }}"
+          - "OS Family: {{ ansible_os_family }}"
+          - "Elasticsearch hosts: {{ elasticsearch_hosts }}"
+          - "Kibana host: {{ kibana_host }}"
+
+    - name: Update package cache
+      package:
+        update_cache: yes
+      when: ansible_os_family in ['Debian', 'RedHat']
+
+    - name: Install prerequisites
+      package:
+        name:
+          - curl
+          - gnupg
+        state: present
+
+    - name: Add Elastic repository key (Debian/Ubuntu)
+      apt_key:
+        url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Elastic repository (Debian/Ubuntu)
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/{{ metricbeat_version }}/apt stable main"
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Import Elastic GPG key (RedHat/CentOS)
+      rpm_key:
+        key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Add Elastic repository (RedHat/CentOS)
+      yum_repository:
+        name: elastic
+        description: Elastic {{ metricbeat_version }} repository
+        baseurl: https://artifacts.elastic.co/packages/{{ metricbeat_version }}/yum
+        gpgcheck: yes
+        gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Install Metricbeat
+      package:
+        name: metricbeat
+        state: present
+
+    - name: Backup original configuration
+      copy:
+        src: /etc/metricbeat/metricbeat.yml
+        dest: /etc/metricbeat/metricbeat.yml.backup
+        remote_src: yes
+        force: no
+
+    - name: Create Metricbeat configuration
+      template:
+        src: roles/ansible-role-metricbeat/templates/metricbeat.yml.j2
+        dest: /etc/metricbeat/metricbeat.yml
+        owner: root
+        group: root
+        mode: '0600'
+        backup: yes
+      notify: restart metricbeat
+
+    - name: Configure System module
+      copy:
+        content: |
+          - module: system
+            metricsets:
+              - cpu
+              - load
+              - memory
+              - network
+              - process
+              - diskio
+              - filesystem
+              - fsstat
+              - core
+            enabled: {{ enable_system_module | lower }}
+            period: 10s
+            processes: ['.*']
+        dest: /etc/metricbeat/modules.d/system.yml
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Check if Docker is installed
+      stat:
+        path: /var/run/docker.sock
+      register: docker_socket
+
+    - name: Configure Docker module
+      copy:
+        content: |
+          - module: docker
+            metricsets:
+              - container
+              - cpu
+              - diskio
+              - info
+              - memory
+              - network
+            hosts: ["unix:///var/run/docker.sock"]
+            enabled: {{ (enable_docker_module and docker_socket.stat.exists) | lower }}
+            period: 10s
+        dest: /etc/metricbeat/modules.d/docker.yml
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Check if Nginx is running
+      uri:
+        url: http://localhost/nginx_status
+        method: GET
+      register: nginx_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Configure Nginx module
+      copy:
+        content: |
+          - module: nginx
+            metricsets:
+              - stubstatus
+            hosts: ["http://127.0.0.1"]
+            enabled: {{ (enable_nginx_module and nginx_check.status == 200) | default(false) | lower }}
+            period: 10s
+            server_status_path: "nginx_status"
+        dest: /etc/metricbeat/modules.d/nginx.yml
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Check if PostgreSQL is running
+      shell: pgrep postgres
+      register: postgres_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Configure PostgreSQL module
+      copy:
+        content: |
+          - module: postgresql
+            metricsets:
+              - database
+              - bgwriter
+              - activity
+            hosts: ["postgres://localhost:5432"]
+            enabled: {{ (enable_postgresql_module and postgres_check.rc == 0) | default(false) | lower }}
+            period: 10s
+        dest: /etc/metricbeat/modules.d/postgresql.yml
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Create log directory
+      file:
+        path: /var/log/metricbeat
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Start and enable Metricbeat service
+      systemd:
+        name: metricbeat
+        state: "{{ metricbeat_service_state }}"
+        enabled: "{{ metricbeat_service_enabled }}"
+        daemon_reload: yes
+
+    - name: Wait for Metricbeat to start
+      wait_for:
+        timeout: 15
+
+  handlers:
+    - name: restart metricbeat
+      systemd:
+        name: metricbeat
+        state: restarted
+
+  post_tasks:
+    - name: Validate Metricbeat configuration
+      command: metricbeat test config
+      register: config_validation
+      changed_when: false
+      failed_when: config_validation.rc != 0
+
+    - name: Test Elasticsearch connection
+      command: metricbeat test output
+      register: output_test
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Check Metricbeat service status
+      systemd:
+        name: metricbeat
+      register: service_status
+
+    - name: Setup Kibana dashboards
+      command: metricbeat setup --dashboards
+      when: 
+        - setup_dashboards | bool
+        - output_test.rc == 0
+      run_once: true
+      ignore_errors: yes
+
+    - name: Setup index template
+      command: metricbeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts={{ elasticsearch_hosts | to_json }}'
+      when: 
+        - setup_template | bool
+        - output_test.rc == 0
+      run_once: true
+      ignore_errors: yes
+
+    - name: Display installation summary
+      debug:
+        msg:
+          - "=== METRICBEAT INSTALLATION SUMMARY ==="
+          - "Configuration: {{ 'VALID' if config_validation.rc == 0 else 'INVALID' }}"
+          - "Service Status: {{ service_status.status.ActiveState }}"
+          - "Elasticsearch Connection: {{ 'SUCCESS' if output_test.rc == 0 else 'FAILED' }}"
+          - "System Module: {{ 'ENABLED' if enable_system_module else 'DISABLED' }}"
+          - "Docker Module: {{ 'ENABLED' if (enable_docker_module and docker_socket.stat.exists) else 'DISABLED' }}"
+          - "Nginx Module: {{ 'ENABLED' if (enable_nginx_module and nginx_check.status == 200) else 'DISABLED' }}"
+          - "PostgreSQL Module: {{ 'ENABLED' if (enable_postgresql_module and postgres_check.rc == 0) else 'DISABLED' }}"

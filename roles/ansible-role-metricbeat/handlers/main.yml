@@ -1,0 +1,7 @@
+---
+- name: Restart metricbeat
+  ansible.builtin.service:
+    name: "{{ metricbeat_service_name }}"
+    state: restarted
+  listen: metricbeat_restart
+  when: metricbeat_service_status == 'started'

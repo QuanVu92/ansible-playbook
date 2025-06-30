@@ -1,0 +1,97 @@
+---
+- name: Configure elastic repository
+  ansible.builtin.include_role:
+    name: nephelaiio.elastic_repo
+  when: metricbeat_repo_manage
+
+- name: Collect package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Disable package locks
+  when: metricbeat_package_hold
+  block:
+
+    - name: Disable yum package lock
+      when: ansible_os_family == 'RedHat'
+      block:
+
+        - name: Install yum version lock support
+          ansible.builtin.package:
+            name: yum-plugin-versionlock
+
+        - name: Disable yum package lock
+          community.general.yum_versionlock:
+            name: "{{ item }}"
+            state: absent
+          loop: "{{ [metricbeat_package_names] | flatten }}"
+          changed_when: false
+          when: item in packages
+
+    - name: Disable apt package lock
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: install
+      loop: "{{ [metricbeat_package_names] | flatten }}"
+      changed_when: false
+      when:
+        - item in packages
+        - ansible_os_family == 'Debian'
+
+- name: Install metricbeat packages
+  ansible.builtin.package:
+    name: "{{ metricbeat_package_names }}"
+    state: "{{ metricbeat_package_state }}"
+
+- name: Configure metricbeat
+  when: metricbeat_package_state in ['present', 'latest']
+  block:
+
+    - name: Enable package locks
+      when: metricbeat_package_hold
+      block:
+
+        - name: Enable apt package hold
+          ansible.builtin.dpkg_selections:
+            name: "{{ item }}"
+            selection: hold
+          loop: "{{ [metricbeat_package_names] | flatten }}"
+          changed_when: false
+          when: ansible_os_family == 'Debian'
+
+        - name: Enable yum package lock
+          community.general.yum_versionlock:
+            name: "{{ item }}"
+            state: present
+          loop: "{{ [metricbeat_package_names] | flatten }}"
+          changed_when: false
+          when: ansible_os_family == 'RedHat'
+
+    - name: Manage metricbeat main configuration file
+      ansible.builtin.copy:
+        content: |
+          # Ansible managed
+
+          {{ metricbeat_conf | to_nice_yaml(indent=2) }}
+        dest: "{{ metricbeat_conf_path }}"
+        mode: "u=rw,g=r,o="
+      notify: metricbeat_restart
+
+    - name: Manage metricbeat module configuration files
+      ansible.builtin.copy:
+        dest: "{{ metricbeat_conf_modules_path }}/{{ module_name }}.yml"
+        content: |
+          ---
+          {{ module_conf | to_nice_yaml(indent=2) }}
+        mode: "u=rw,g=r,o="
+      vars:
+        module_conf: "{{ metricbeat_conf_modules | selectattr('module', 'equalto', module_name) | list }}"
+      loop_control:
+        loop_var: module_name
+        label: "{{ module_name }}"
+      notify: metricbeat_restart
+      loop: "{{ metricbeat_conf_modules | map(attribute='module') | list | unique }}"
+      when: metricbeat_conf_manage
+
+    - name: Include service tasks
+      ansible.builtin.include_tasks: service.yml
