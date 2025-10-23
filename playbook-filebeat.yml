@@ -8,108 +8,111 @@
     # ============================================================================
     # FILEBEAT VERSION - Có thể override từ AWX Extra Variables
     # ============================================================================
-    filebeat_version: "{{ filebeat_version | default('8.x') }}"
+    filebeat_version: "8.x"
     
     # ============================================================================
     # FILEBEAT INPUT CONFIGURATION - Có thể override từ AWX
     # ============================================================================
     # Input type: filestream (recommended) or log
-    input_type: "{{ input_type | default('filestream') }}"
+    input_type: "filestream"
     
     # Unique input ID - AWX có thể set theo hostname hoặc environment
-    input_id: "{{ input_id | default('filebeat-' + inventory_hostname) }}"
+    input_id: "filebeat-{{ inventory_hostname }}"
     
     # Enable/disable input
-    input_enabled: "{{ input_enabled | default(true) }}"
+    input_enabled: true
     
     # Log paths - AWX có thể customize theo từng server
-    log_paths: "{{ log_paths | default([
-      '/var/log/nginx/*error*.log',
-      '/var/log/nginx/*/*error*.log',
-      '/var/log/nginx/*access*.log',
-      '/var/log/nginx/*/*access*.log'
-    ]) }}"
+    log_paths:
+      - /var/log/nginx/*error*.log
+      - /var/log/nginx/*/*error*.log
+      - /var/log/nginx/*access*.log
+      - /var/log/nginx/*/*access*.log
     
     # Additional log paths cho system logs
-    enable_system_logs: "{{ enable_system_logs | default(false) }}"
-    system_log_paths: "{{ system_log_paths | default([
-      '/var/log/messages',
-      '/var/log/syslog',
-      '/var/log/*.log'
-    ]) }}"
+    enable_system_logs: false
+    system_log_paths:
+      - /var/log/messages
+      - /var/log/syslog
+      - /var/log/*.log
     
     # ============================================================================
     # OUTPUT CONFIGURATION - AWX Override
     # ============================================================================
     # Output type: elasticsearch, logstash, kafka
-    output_type: "{{ output_type | default('kafka') }}"
+    output_type: "kafka"
     
     # --- Kafka Output Configuration ---
-    kafka_enabled: "{{ kafka_enabled | default(true) }}"
-    kafka_hosts: "{{ kafka_hosts | default(['192.168.23.80:9092']) }}"
-    kafka_topic: "{{ kafka_topic | default('native-beat') }}"
-    kafka_username: "{{ kafka_username | default('kafka-admin') }}"
-    kafka_password: "{{ kafka_password | default('Thinhphat123') }}"  # Set từ AWX Credentials
-    kafka_sasl_mechanism: "{{ kafka_sasl_mechanism | default('SCRAM-SHA-512') }}"
-    kafka_client_id: "{{ kafka_client_id | default('beats-' + inventory_hostname) }}"
-    kafka_required_acks: "{{ kafka_required_acks | default(1) }}"
+    kafka_enabled: true
+    kafka_hosts:
+      - "192.168.23.80:9092"
+    kafka_topic: "native-beat"
+    kafka_username: "kafka-admin"
+    kafka_password: "Thinhphat123"  # Set từ AWX Credentials
+    kafka_sasl_mechanism: "SCRAM-SHA-512"
+    kafka_client_id: "beats-{{ inventory_hostname }}"
+    kafka_required_acks: 1
     
     # --- Elasticsearch Output Configuration ---
-    elasticsearch_enabled: "{{ elasticsearch_enabled | default(false) }}"
-    elasticsearch_hosts: "{{ elasticsearch_hosts | default(['localhost:9200']) }}"
-    elasticsearch_username: "{{ elasticsearch_username | default('') }}"
-    elasticsearch_password: "{{ elasticsearch_password | default('') }}"
-    elasticsearch_protocol: "{{ elasticsearch_protocol | default('http') }}"
-    elasticsearch_ssl_fingerprint: "{{ elasticsearch_ssl_fingerprint | default('') }}"
+    elasticsearch_enabled: false
+    elasticsearch_hosts:
+      - "localhost:9200"
+    elasticsearch_username: ""
+    elasticsearch_password: ""
+    elasticsearch_protocol: "http"
+    elasticsearch_ssl_fingerprint: ""
     
     # --- Logstash Output Configuration ---
-    logstash_enabled: "{{ logstash_enabled | default(false) }}"
-    logstash_hosts: "{{ logstash_hosts | default(['localhost:5044']) }}"
+    logstash_enabled: false
+    logstash_hosts:
+      - "localhost:5044"
     
     # ============================================================================
     # KIBANA SETUP - AWX Override
     # ============================================================================
-    kibana_host: "{{ kibana_host | default('') }}"
-    kibana_enabled: "{{ kibana_enabled | default(false) }}"
-    setup_dashboards: "{{ setup_dashboards | default(false) }}"
+    kibana_host: ""
+    kibana_enabled: false
+    setup_dashboards: false
     
     # ============================================================================
     # GENERAL SETTINGS - AWX Override
     # ============================================================================
     # Tags để phân loại trong Kibana/Elasticsearch
-    filebeat_tags: "{{ filebeat_tags | default(['nginx', 'prod']) }}"
+    filebeat_tags:
+      - nginx
+      - prod
     
     # Environment field
-    environment: "{{ environment | default('production') }}"
+    filebeat_environment: "production"
     
     # Shipper name
-    shipper_name: "{{ shipper_name | default('') }}"
+    shipper_name: ""
     
     # ============================================================================
     # PROCESSORS - AWX Override
     # ============================================================================
-    enable_processors: "{{ enable_processors | default(true) }}"
-    add_host_metadata: "{{ add_host_metadata | default(true) }}"
-    add_cloud_metadata: "{{ add_cloud_metadata | default(true) }}"
-    add_docker_metadata: "{{ add_docker_metadata | default(true) }}"
-    add_kubernetes_metadata: "{{ add_kubernetes_metadata | default(true) }}"
+    enable_processors: true
+    add_host_metadata: true
+    add_cloud_metadata: true
+    add_docker_metadata: true
+    add_kubernetes_metadata: true
     
     # ============================================================================
     # TEMPLATE SETTINGS - AWX Override
     # ============================================================================
-    index_number_of_shards: "{{ index_number_of_shards | default(1) }}"
+    index_number_of_shards: 1
     
     # ============================================================================
     # SERVICE CONFIGURATION - AWX Override
     # ============================================================================
-    filebeat_service_state: "{{ filebeat_service_state | default('started') }}"
-    filebeat_service_enabled: "{{ filebeat_service_enabled | default(true) }}"
+    filebeat_service_state: "started"
+    filebeat_service_enabled: true
     
     # ============================================================================
     # MODULE CONFIGURATION - AWX Override
     # ============================================================================
-    enable_modules: "{{ enable_modules | default(false) }}"
-    modules_reload_enabled: "{{ modules_reload_enabled | default(false) }}"
+    enable_modules: false
+    modules_reload_enabled: false
 
   tasks:
     # ==========================================================================
@@ -126,7 +129,7 @@
           - "Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}"
           - "Filebeat Version: {{ filebeat_version }}"
           - "Output Type: {{ output_type }}"
-          - "Environment: {{ environment }}"
+          - "Environment: {{ filebeat_environment }}"
           - "=========================================="
 
     # ==========================================================================
@@ -274,7 +277,7 @@
           tags: {{ filebeat_tags | to_json }}
           
           fields:
-            env: {{ environment }}
+            env: {{ filebeat_environment }}
           fields_under_root: true
           
           # ================================== Outputs ===================================
@@ -426,7 +429,7 @@
           - "{% if output_type == 'logstash' %}Logstash: {{ logstash_hosts | join(', ') }}{% endif %}"
           - "Input ID: {{ input_id }}"
           - "Tags: {{ filebeat_tags | join(', ') }}"
-          - "Environment: {{ environment }}"
+          - "Environment: {{ filebeat_environment }}"
           - "=========================================="
 
   handlers:

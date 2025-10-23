@@ -51,7 +51,7 @@ kafka_required_acks: 1
 filebeat_tags:
   - nginx
   - prod
-environment: "production"
+filebeat_environment: "production"
 shipper_name: ""
 
 # Processors
@@ -272,9 +272,9 @@ setup_dashboards: true
 
 ### **9. General Settings**
 
-#### `environment`
+#### `filebeat_environment`
 ```yaml
-environment: "production"
+filebeat_environment: "production"
 ```
 - Tên environment, được thêm vào mỗi log event
 - Ví dụ: `"production"`, `"staging"`, `"development"`
@@ -390,7 +390,7 @@ kafka_hosts: ["192.168.23.80:9092"]
 kafka_topic: "nginx-prod"
 kafka_username: "kafka-admin"
 kafka_password: "Thinhphat123"
-environment: "production"
+filebeat_environment: "production"
 filebeat_tags: ["nginx", "prod"]
 ```
 
@@ -408,7 +408,7 @@ enable_system_logs: true
 output_type: "kafka"
 kafka_hosts: ["192.168.23.80:9092"]
 kafka_topic: "app-staging"
-environment: "staging"
+filebeat_environment: "staging"
 filebeat_tags: ["application", "staging"]
 ```
 
@@ -429,7 +429,7 @@ elasticsearch_password: "password"
 kibana_enabled: true
 kibana_host: "kibana:5601"
 setup_dashboards: true
-environment: "production"
+filebeat_environment: "production"
 ```
 
 ---
@@ -438,21 +438,21 @@ environment: "production"
 
 **Production:**
 ```yaml
-environment: "production"
+filebeat_environment: "production"
 kafka_topic: "prod-logs"
 filebeat_tags: ["prod"]
 ```
 
 **Staging:**
 ```yaml
-environment: "staging"
+filebeat_environment: "staging"
 kafka_topic: "staging-logs"
 filebeat_tags: ["staging"]
 ```
 
 **Development:**
 ```yaml
-environment: "development"
+filebeat_environment: "development"
 kafka_topic: "dev-logs"
 filebeat_tags: ["dev"]
 ```
@@ -483,7 +483,7 @@ kafka_username: "kafka-admin"
 kafka_password: "Thinhphat123"
 
 # Optional nhưng nên có
-environment: "production"
+filebeat_environment: "production"
 filebeat_tags: ["nginx", "prod"]
 ```
 
