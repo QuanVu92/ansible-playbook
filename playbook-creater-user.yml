@@ -1,0 +1,20 @@
+---
+- hosts: all
+  become: true
+  roles:
+    - role: ansible-role-create-users
+
+  vars:
+    users:
+      - username: testuser101
+        password: $6ertLiH5eUGk # Mật khẩu mới đã được mã hóa bằng SHA-512 Abc@4321
+        update_password: always
+        comment: Test User 100
+        shell: /bin/bash
+        ssh_key: |
+          ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx8crAHG/a9QBD4zO0ZHIjdRXy+ySKviXVCMIJ3/NMIAAzDyIsPKToUJmIApHHHF1/hBllqzBSkPEMwgFbXjyqTeVPHF8V0iq41n0kgbulJG testuser101@server1
+ #       exclusive_ssh_key: yes
+ #       groups: groupcommon
+        use_sudo: no
+        user_state: present
+        servers: all
