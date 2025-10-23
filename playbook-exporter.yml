@@ -167,11 +167,16 @@
       register: metrics_test
       failed_when: false
 
+    - name: Check service status
+      systemd:
+        name: node_exporter
+      register: service_status
+
     - name: Display installation results
       debug:
         msg:
           - "=== Node Exporter Installation Results ==="
-          - "Service Status: {{ 'RUNNING' if ansible_facts.services['node_exporter.service'].state == 'running' else 'NOT RUNNING' }}"
+          - "Service Status: {{ 'RUNNING' if service_status.status.ActiveState == 'active' else 'NOT RUNNING' }}"
           - "Port 9100: {{ 'LISTENING' if metrics_test.status == 200 else 'NOT ACCESSIBLE' }}"
           - "Metrics Endpoint: http://{{ inventory_hostname }}:9100/metrics"
           - "Version: {{ node_exporter_version }}"
