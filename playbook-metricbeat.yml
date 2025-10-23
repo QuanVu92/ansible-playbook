@@ -379,7 +379,7 @@
 
     - name: Setup Elasticsearch index template
       command: >
-        metricbeat setup --template 
+        metricbeat setup --index-management 
         -E output.logstash.enabled=false 
         -E 'output.elasticsearch.hosts={{ elasticsearch_hosts | to_json }}'
         -E 'output.elasticsearch.protocol={{ elasticsearch_protocol }}'
