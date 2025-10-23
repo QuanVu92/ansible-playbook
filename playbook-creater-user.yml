@@ -7,7 +7,7 @@
   vars:
     users:
       - username: testuser101
-        password: $6$qGDk5iGbvpIGS1rZ$4gflnyd2Z/cTuBwhFmNvD9Pz8myUPecpIkvdlieZ9Iv9UzUTyPm5ABNWcfXvZF6MZQ/4z2EfcAFNGnPC9Oipz/ # Mật khẩu mới đã được mã hóa bằng SHA-512 Abc@4321
+        password: $6$qGDk5iGbvpIGS1rZ$4gflnyd2Z/cTuBwhFmNvD9Pz8myUPecpIkvdlieZ9Iv9UzUTyPm5ABNWcfXvZF6MZQ/4z2EfcAFNGnPC9Oipz/ # openssl passwd -6 "Abc@4321" => Abc@4321
         update_password: always
         comment: Test User 100
         shell: /bin/bash
@@ -15,7 +15,8 @@
           ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx8crAHG/a9QBD4zO0ZHIjdRXy+ySKviXVCMIJ3/NMIAAzDyIsPKToUJmIApHHHF1/hBllqzBSkPEMwgFbXjyqTeVPHF8V0iq41n0kgbulJG testuser101@server1
         # exclusive_ssh_key: yes
         # groups: groupcommon
-        use_sudo: no
+        use_sudo: yes
+        use_sudo_nopass: yes
         user_state: present
         servers: 
           - all
