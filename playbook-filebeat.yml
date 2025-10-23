@@ -223,7 +223,7 @@
     # CONFIGURE FILEBEAT
     # ==========================================================================
     - name: Create Filebeat configuration from template
-      template:
+      copy:
         dest: /etc/filebeat/filebeat.yml
         owner: root
         group: root
