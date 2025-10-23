@@ -129,11 +129,6 @@
           - "Environment: {{ environment }}"
           - "=========================================="
 
-    - name: Update package cache
-      package:
-        update_cache: yes
-      when: ansible_os_family in ['Debian', 'RedHat']
-
     # ==========================================================================
     # INSTALL PREREQUISITES
     # ==========================================================================
@@ -144,6 +139,7 @@
           - gnupg2
           - curl
         state: present
+        update_cache: yes
       when: ansible_os_family == "Debian"
 
     - name: Install prerequisites (RedHat/CentOS)
@@ -168,7 +164,13 @@
       apt_repository:
         repo: 'deb https://artifacts.elastic.co/packages/{{ filebeat_version }}/apt stable main'
         state: present
+        update_cache: no
+      when: ansible_os_family == "Debian"
+
+    - name: Update apt cache after adding repository (Debian/Ubuntu)
+      apt:
         update_cache: yes
+        cache_valid_time: 3600
       when: ansible_os_family == "Debian"
 
     - name: Import Elastic GPG key (RedHat/CentOS)
@@ -187,13 +189,25 @@
         enabled: yes
       when: ansible_os_family == "RedHat"
 
+    - name: Update yum cache after adding repository (RedHat/CentOS)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
     # ==========================================================================
     # INSTALL FILEBEAT
     # ==========================================================================
-    - name: Install Filebeat package
-      package:
+    - name: Install Filebeat package (Debian/Ubuntu)
+      apt:
         name: filebeat
         state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Filebeat package (RedHat/CentOS)
+      yum:
+        name: filebeat
+        state: present
+      when: ansible_os_family == "RedHat"
 
     - name: Backup original Filebeat configuration
       copy:
