@@ -1,0 +1,423 @@
+---
+- name: Install and Configure Filebeat - AWX Template
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # ============================================================================
+    # FILEBEAT VERSION - Có thể override từ AWX Extra Variables
+    # ============================================================================
+    filebeat_version: "{{ filebeat_version | default('8.x') }}"
+    
+    # ============================================================================
+    # FILEBEAT INPUT CONFIGURATION - Có thể override từ AWX
+    # ============================================================================
+    # Input type: filestream (recommended) or log
+    input_type: "{{ input_type | default('filestream') }}"
+    
+    # Unique input ID - AWX có thể set theo hostname hoặc environment
+    input_id: "{{ input_id | default('filebeat-' + inventory_hostname) }}"
+    
+    # Enable/disable input
+    input_enabled: "{{ input_enabled | default(true) }}"
+    
+    # Log paths - AWX có thể customize theo từng server
+    log_paths: "{{ log_paths | default([
+      '/var/log/nginx/*error*.log',
+      '/var/log/nginx/*/*error*.log',
+      '/var/log/nginx/*access*.log',
+      '/var/log/nginx/*/*access*.log'
+    ]) }}"
+    
+    # Additional log paths cho system logs
+    enable_system_logs: "{{ enable_system_logs | default(false) }}"
+    system_log_paths: "{{ system_log_paths | default([
+      '/var/log/messages',
+      '/var/log/syslog',
+      '/var/log/*.log'
+    ]) }}"
+    
+    # ============================================================================
+    # OUTPUT CONFIGURATION - AWX Override
+    # ============================================================================
+    # Output type: elasticsearch, logstash, kafka
+    output_type: "{{ output_type | default('kafka') }}"
+    
+    # --- Kafka Output Configuration ---
+    kafka_enabled: "{{ kafka_enabled | default(true) }}"
+    kafka_hosts: "{{ kafka_hosts | default(['192.168.23.80:9092']) }}"
+    kafka_topic: "{{ kafka_topic | default('native-beat') }}"
+    kafka_username: "{{ kafka_username | default('kafka-admin') }}"
+    kafka_password: "{{ kafka_password | default('Thinhphat123') }}"  # Set từ AWX Credentials
+    kafka_sasl_mechanism: "{{ kafka_sasl_mechanism | default('SCRAM-SHA-512') }}"
+    kafka_client_id: "{{ kafka_client_id | default('beats-' + inventory_hostname) }}"
+    kafka_required_acks: "{{ kafka_required_acks | default(1) }}"
+    
+    # --- Elasticsearch Output Configuration ---
+    elasticsearch_enabled: "{{ elasticsearch_enabled | default(false) }}"
+    elasticsearch_hosts: "{{ elasticsearch_hosts | default(['localhost:9200']) }}"
+    elasticsearch_username: "{{ elasticsearch_username | default('') }}"
+    elasticsearch_password: "{{ elasticsearch_password | default('') }}"
+    elasticsearch_protocol: "{{ elasticsearch_protocol | default('http') }}"
+    elasticsearch_ssl_fingerprint: "{{ elasticsearch_ssl_fingerprint | default('') }}"
+    
+    # --- Logstash Output Configuration ---
+    logstash_enabled: "{{ logstash_enabled | default(false) }}"
+    logstash_hosts: "{{ logstash_hosts | default(['localhost:5044']) }}"
+    
+    # ============================================================================
+    # KIBANA SETUP - AWX Override
+    # ============================================================================
+    kibana_host: "{{ kibana_host | default('') }}"
+    kibana_enabled: "{{ kibana_enabled | default(false) }}"
+    setup_dashboards: "{{ setup_dashboards | default(false) }}"
+    
+    # ============================================================================
+    # GENERAL SETTINGS - AWX Override
+    # ============================================================================
+    # Tags để phân loại trong Kibana/Elasticsearch
+    filebeat_tags: "{{ filebeat_tags | default(['nginx', 'prod']) }}"
+    
+    # Environment field
+    environment: "{{ environment | default('production') }}"
+    
+    # Shipper name
+    shipper_name: "{{ shipper_name | default('') }}"
+    
+    # ============================================================================
+    # PROCESSORS - AWX Override
+    # ============================================================================
+    enable_processors: "{{ enable_processors | default(true) }}"
+    add_host_metadata: "{{ add_host_metadata | default(true) }}"
+    add_cloud_metadata: "{{ add_cloud_metadata | default(true) }}"
+    add_docker_metadata: "{{ add_docker_metadata | default(true) }}"
+    add_kubernetes_metadata: "{{ add_kubernetes_metadata | default(true) }}"
+    
+    # ============================================================================
+    # TEMPLATE SETTINGS - AWX Override
+    # ============================================================================
+    index_number_of_shards: "{{ index_number_of_shards | default(1) }}"
+    
+    # ============================================================================
+    # SERVICE CONFIGURATION - AWX Override
+    # ============================================================================
+    filebeat_service_state: "{{ filebeat_service_state | default('started') }}"
+    filebeat_service_enabled: "{{ filebeat_service_enabled | default(true) }}"
+    
+    # ============================================================================
+    # MODULE CONFIGURATION - AWX Override
+    # ============================================================================
+    enable_modules: "{{ enable_modules | default(false) }}"
+    modules_reload_enabled: "{{ modules_reload_enabled | default(false) }}"
+
+  tasks:
+    # ==========================================================================
+    # PRE-INSTALLATION TASKS
+    # ==========================================================================
+    - name: Display installation information
+      debug:
+        msg:
+          - "=========================================="
+          - "FILEBEAT INSTALLATION - AWX DEPLOYMENT"
+          - "=========================================="
+          - "Target Host: {{ inventory_hostname }}"
+          - "OS Family: {{ ansible_os_family }}"
+          - "Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Filebeat Version: {{ filebeat_version }}"
+          - "Output Type: {{ output_type }}"
+          - "Environment: {{ environment }}"
+          - "=========================================="
+
+    - name: Update package cache
+      package:
+        update_cache: yes
+      when: ansible_os_family in ['Debian', 'RedHat']
+
+    # ==========================================================================
+    # INSTALL PREREQUISITES
+    # ==========================================================================
+    - name: Install prerequisites (Debian/Ubuntu)
+      apt:
+        name:
+          - apt-transport-https
+          - gnupg2
+          - curl
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install prerequisites (RedHat/CentOS)
+      yum:
+        name:
+          - curl
+          - gnupg2
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # ==========================================================================
+    # ADD ELASTIC REPOSITORY
+    # ==========================================================================
+    - name: Add Elastic repository key (Debian/Ubuntu)
+      apt_key:
+        url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        id: 46095ACC8548582C1A2699A9D27D666CD88E42B4
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Elastic repository (Debian/Ubuntu)
+      apt_repository:
+        repo: 'deb https://artifacts.elastic.co/packages/{{ filebeat_version }}/apt stable main'
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Import Elastic GPG key (RedHat/CentOS)
+      rpm_key:
+        key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Add Elastic repository (RedHat/CentOS)
+      yum_repository:
+        name: elastic
+        description: Elastic {{ filebeat_version }} repository
+        baseurl: https://artifacts.elastic.co/packages/{{ filebeat_version }}/yum
+        gpgcheck: yes
+        gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled: yes
+      when: ansible_os_family == "RedHat"
+
+    # ==========================================================================
+    # INSTALL FILEBEAT
+    # ==========================================================================
+    - name: Install Filebeat package
+      package:
+        name: filebeat
+        state: present
+
+    - name: Backup original Filebeat configuration
+      copy:
+        src: /etc/filebeat/filebeat.yml
+        dest: /etc/filebeat/filebeat.yml.backup-{{ ansible_date_time.epoch }}
+        remote_src: yes
+        force: no
+      ignore_errors: yes
+
+    # ==========================================================================
+    # CONFIGURE FILEBEAT
+    # ==========================================================================
+    - name: Create Filebeat configuration from template
+      template:
+        dest: /etc/filebeat/filebeat.yml
+        owner: root
+        group: root
+        mode: '0600'
+        backup: yes
+        content: |
+          ###################### Filebeat Configuration - AWX Managed #########################
+          
+          # ============================== Filebeat inputs ===============================
+          filebeat.inputs:
+          
+          # Main input configuration
+          - type: {{ input_type }}
+            id: {{ input_id }}
+            enabled: {{ input_enabled | lower }}
+            paths:
+          {% for path in log_paths %}
+              - {{ path }}
+          {% endfor %}
+          
+          {% if enable_system_logs %}
+          # System logs input
+          - type: {{ input_type }}
+            id: {{ input_id }}-system
+            enabled: true
+            paths:
+          {% for path in system_log_paths %}
+              - {{ path }}
+          {% endfor %}
+            fields:
+              log_type: system
+            fields_under_root: true
+          {% endif %}
+          
+          # ============================== Filebeat modules ==============================
+          {% if enable_modules %}
+          filebeat.config.modules:
+            path: ${path.config}/modules.d/*.yml
+            reload.enabled: {{ modules_reload_enabled | lower }}
+          {% endif %}
+          
+          # ======================= Elasticsearch template setting =======================
+          setup.template.settings:
+            index.number_of_shards: {{ index_number_of_shards }}
+          
+          # ================================== General ===================================
+          {% if shipper_name %}
+          name: {{ shipper_name }}
+          {% endif %}
+          
+          tags: {{ filebeat_tags | to_json }}
+          
+          fields:
+            env: {{ environment }}
+          fields_under_root: true
+          
+          # ================================== Outputs ===================================
+          
+          {% if output_type == 'kafka' and kafka_enabled %}
+          # ------------------------------ Kafka Output -------------------------------
+          output.kafka:
+            hosts: {{ kafka_hosts | to_json }}
+            topic: {{ kafka_topic }}
+            username: "{{ kafka_username }}"
+            password: "{{ kafka_password }}"
+            sasl.mechanism: {{ kafka_sasl_mechanism }}
+            client_id: "{{ kafka_client_id }}"
+            required_acks: {{ kafka_required_acks }}
+          {% endif %}
+          
+          {% if output_type == 'elasticsearch' and elasticsearch_enabled %}
+          # ---------------------------- Elasticsearch Output ----------------------------
+          output.elasticsearch:
+            hosts: {{ elasticsearch_hosts | to_json }}
+            protocol: "{{ elasticsearch_protocol }}"
+          {% if elasticsearch_username %}
+            username: "{{ elasticsearch_username }}"
+            password: "{{ elasticsearch_password }}"
+          {% endif %}
+          {% if elasticsearch_ssl_fingerprint %}
+            ssl.ca_trusted_fingerprint: {{ elasticsearch_ssl_fingerprint }}
+          {% endif %}
+          {% endif %}
+          
+          {% if output_type == 'logstash' and logstash_enabled %}
+          # ------------------------------ Logstash Output -------------------------------
+          output.logstash:
+            hosts: {{ logstash_hosts | to_json }}
+          {% endif %}
+          
+          {% if kibana_enabled and kibana_host %}
+          # =================================== Kibana ===================================
+          setup.kibana:
+            host: "{{ kibana_host }}"
+          {% endif %}
+          
+          # ================================= Processors =================================
+          {% if enable_processors %}
+          processors:
+          {% if add_host_metadata %}
+            - add_host_metadata:
+                when.not.contains.tags: forwarded
+          {% endif %}
+          {% if add_cloud_metadata %}
+            - add_cloud_metadata: ~
+          {% endif %}
+          {% if add_docker_metadata %}
+            - add_docker_metadata: ~
+          {% endif %}
+          {% if add_kubernetes_metadata %}
+            - add_kubernetes_metadata: ~
+          {% endif %}
+          {% endif %}
+      notify: restart filebeat
+
+    # ==========================================================================
+    # CREATE REQUIRED DIRECTORIES
+    # ==========================================================================
+    - name: Create Filebeat log directory
+      file:
+        path: /var/log/filebeat
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create modules.d directory
+      file:
+        path: /etc/filebeat/modules.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    # ==========================================================================
+    # SERVICE MANAGEMENT
+    # ==========================================================================
+    - name: Start and enable Filebeat service
+      systemd:
+        name: filebeat
+        state: "{{ filebeat_service_state }}"
+        enabled: "{{ filebeat_service_enabled }}"
+        daemon_reload: yes
+
+    # ==========================================================================
+    # VALIDATION AND TESTING
+    # ==========================================================================
+    - name: Wait for Filebeat to start
+      wait_for:
+        timeout: 10
+
+    - name: Test Filebeat configuration
+      command: filebeat test config -c /etc/filebeat/filebeat.yml
+      register: config_test
+      changed_when: false
+      failed_when: config_test.rc != 0
+
+    - name: Test Filebeat output connection
+      command: filebeat test output -c /etc/filebeat/filebeat.yml
+      register: output_test
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Get Filebeat version
+      command: filebeat version
+      register: filebeat_version_output
+      changed_when: false
+
+    - name: Check Filebeat service status
+      systemd:
+        name: filebeat
+      register: service_status
+
+    # ==========================================================================
+    # SETUP DASHBOARDS (Optional)
+    # ==========================================================================
+    - name: Setup Kibana dashboards
+      command: filebeat setup --dashboards
+      when:
+        - setup_dashboards | bool
+        - kibana_enabled | bool
+        - output_test.rc == 0
+      run_once: true
+      ignore_errors: yes
+
+    # ==========================================================================
+    # DISPLAY SUMMARY
+    # ==========================================================================
+    - name: Display installation summary
+      debug:
+        msg:
+          - "=========================================="
+          - "FILEBEAT INSTALLATION SUMMARY"
+          - "=========================================="
+          - "Version: {{ filebeat_version_output.stdout }}"
+          - "Configuration: {{ 'VALID ✓' if config_test.rc == 0 else 'INVALID ✗' }}"
+          - "Service Status: {{ service_status.status.ActiveState }}"
+          - "Output Connection: {{ 'SUCCESS ✓' if output_test.rc == 0 else 'FAILED ✗' }}"
+          - "Output Type: {{ output_type | upper }}"
+          - "{% if output_type == 'kafka' %}Kafka Broker: {{ kafka_hosts | join(', ') }}{% endif %}"
+          - "{% if output_type == 'kafka' %}Kafka Topic: {{ kafka_topic }}{% endif %}"
+          - "{% if output_type == 'elasticsearch' %}Elasticsearch: {{ elasticsearch_hosts | join(', ') }}{% endif %}"
+          - "{% if output_type == 'logstash' %}Logstash: {{ logstash_hosts | join(', ') }}{% endif %}"
+          - "Input ID: {{ input_id }}"
+          - "Tags: {{ filebeat_tags | join(', ') }}"
+          - "Environment: {{ environment }}"
+          - "=========================================="
+
+  handlers:
+    - name: restart filebeat
+      systemd:
+        name: filebeat
+        state: restarted
