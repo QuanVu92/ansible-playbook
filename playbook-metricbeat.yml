@@ -1,0 +1,274 @@
+---
+- name: Deploy and Configure Metricbeat
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Elasticsearch Configuration
+    elasticsearch_hosts:
+      - "192.168.23.84:9200"
+    elasticsearch_protocol: "https"
+    elasticsearch_username: "elastic"
+    elasticsearch_password: "Thinhphat@123"
+    elasticsearch_ssl_certificate_authorities: "/etc/elasticsearch/certs/http_ca.crt"
+
+    # Environment Settings
+    environment: "production"
+    datacenter: "dc1"
+
+    # Metricbeat Role Variables
+    metricbeat_package_state: "latest"
+    metricbeat_service_enabled: yes
+    metricbeat_service_status: "started"
+    metricbeat_repo_manage: yes
+
+    # Configuration Management
+    metricbeat_conf_manage: yes
+    metricbeat_conf_elasticsearch_enabled: true
+    metricbeat_conf_elasticsearch_hosts: "{{ elasticsearch_hosts }}"
+    metricbeat_conf_dashboards_enabled: false
+    metricbeat_conf_template_enabled: true
+
+    # System Monitoring Configuration
+    metricbeat_conf_system_enabled: true
+    metricbeat_conf_system_metricsets:
+      - cpu
+      - load
+      - memory
+      - network
+      - process
+      - diskio
+      - filesystem
+      - fsstat
+      - core
+      - socket_summary
+
+    # Docker Monitoring Configuration
+    metricbeat_conf_docker_enabled: "{{ metricbeat_conf_docker_installed }}"
+    metricbeat_conf_docker_hosts:
+      - "unix:///var/run/docker.sock"
+    metricbeat_conf_docker_period: "10s"
+
+    # Nginx Monitoring Configuration
+    metricbeat_conf_nginx_enabled: "{{ metricbeat_conf_nginx_installed }}"
+    metricbeat_conf_nginx_hosts:
+      - "http://127.0.0.1"
+    metricbeat_conf_nginx_status_path: "nginx_status"
+    metricbeat_conf_nginx_period: "10s"
+
+    # PostgreSQL Monitoring Configuration
+    metricbeat_conf_postgresql_enabled: "{{ metricbeat_conf_postgresql_installed }}"
+    metricbeat_conf_postgresql_hosts:
+      - "postgres://localhost:5432"
+    metricbeat_conf_postgresql_period: "10s"
+
+    # Logging Configuration
+    metricbeat_conf_logging:
+      level: info
+      to_syslog: false
+      to_files: true
+      files:
+        path: /var/log/metricbeat
+        name: metricbeat
+        keepfiles: 7
+        permissions: 0644
+
+    # Additional modules configuration
+    metricbeat_conf_modules_extra:
+      - module: apache
+        enabled: false
+        period: 30s
+        hosts: ["http://127.0.0.1"]
+        metricsets: ["status"]
+      - module: redis
+        enabled: false
+        period: 10s
+        hosts: ["127.0.0.1:6379"]
+        metricsets: ["info", "keyspace"]
+      - module: mongodb
+        enabled: false
+        period: 10s
+        hosts: ["127.0.0.1:27017"]
+        metricsets: ["dbstats", "status"]
+
+    # Custom Metricbeat Configuration Override
+    metricbeat_conf_extra:
+      output:
+        elasticsearch:
+          hosts: "{{ elasticsearch_hosts }}"
+          protocol: "{{ elasticsearch_protocol }}"
+          username: "{{ elasticsearch_username }}"
+          password: "{{ elasticsearch_password }}"
+          preset: balanced
+          ssl:
+            certificate_authorities: "{{ elasticsearch_ssl_certificate_authorities }}"
+      processors:
+        - add_host_metadata: ~
+        - add_cloud_metadata: ~
+        - add_docker_metadata: ~
+        - add_kubernetes_metadata: ~
+      tags: ["{{ environment }}", "metricbeat"]
+      fields:
+        env: "{{ environment }}"
+        datacenter: "{{ datacenter }}"
+      fields_under_root: false
+      http:
+        enabled: false
+        port: 5066
+      monitoring:
+        enabled: false
+      queue:
+        mem:
+          events: 4096
+          flush:
+            min_events: 512
+            timeout: 5s
+
+  pre_tasks:
+    - name: Update package cache (Debian/Ubuntu)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Update package cache (RedHat/CentOS)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Install required dependencies
+      package:
+        name:
+          - curl
+          - gnupg
+        state: present
+
+    - name: Create SSL certificate directory
+      file:
+        path: /etc/elasticsearch/certs
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: elasticsearch_protocol == "https"
+
+    - name: Check if SSL certificate exists
+      stat:
+        path: "{{ elasticsearch_ssl_certificate_authorities }}"
+      register: ssl_cert_stat
+      when: elasticsearch_protocol == "https"
+
+    - name: Warning about SSL certificate
+      debug:
+        msg: "Warning: SSL certificate not found at {{ elasticsearch_ssl_certificate_authorities }}. Please ensure the certificate is available."
+      when: 
+        - elasticsearch_protocol == "https"
+        - not ssl_cert_stat.stat.exists
+
+  tasks:
+    - name: Configure Elastic Repository
+      block:
+        - name: Add Elastic repository GPG key (Debian/Ubuntu)
+          apt_key:
+            url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+            state: present
+          when: ansible_os_family == "Debian"
+
+        - name: Add Elastic repository (Debian/Ubuntu)
+          apt_repository:
+            repo: "deb https://artifacts.elastic.co/packages/8.x/apt stable main"
+            state: present
+            update_cache: yes
+          when: ansible_os_family == "Debian"
+
+        - name: Add Elastic repository (RedHat/CentOS)
+          yum_repository:
+            name: elastic-8.x
+            description: Elastic 8.x repository
+            baseurl: https://artifacts.elastic.co/packages/8.x/yum
+            gpgcheck: yes
+            gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+            enabled: yes
+          when: ansible_os_family == "RedHat"
+
+    - name: Deploy Metricbeat using role
+      include_role:
+        name: ansible-role-metricbeat
+
+    - name: Create enhanced Metricbeat configuration
+      template:
+        src: "{{ playbook_dir }}/roles/ansible-role-metricbeat/templates/metricbeat.yml.j2"
+        dest: /etc/metricbeat/metricbeat.yml
+        owner: root
+        group: root
+        mode: '0600'
+        backup: yes
+      notify: restart metricbeat
+      when: metricbeat_conf_manage
+
+  handlers:
+    - name: restart metricbeat
+      systemd:
+        name: metricbeat
+        state: restarted
+        daemon_reload: yes
+
+  post_tasks:
+    - name: Ensure log directory exists
+      file:
+        path: "{{ metricbeat_conf_logging.files.path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Wait for metricbeat service to be ready
+      wait_for:
+        timeout: 30
+      delegate_to: localhost
+
+    - name: Test metricbeat configuration
+      command: metricbeat test config
+      register: config_test
+      failed_when: config_test.rc != 0
+      changed_when: false
+
+    - name: Test metricbeat output connection
+      command: metricbeat test output
+      register: output_test
+      failed_when: false
+      changed_when: false
+
+    - name: Get metricbeat service status
+      systemd:
+        name: metricbeat
+      register: service_status
+
+    - name: Display deployment results
+      debug:
+        msg:
+          - "=== Metricbeat Deployment Results ==="
+          - "Configuration Test: {{ 'PASSED' if config_test.rc == 0 else 'FAILED' }}"
+          - "Output Connection Test: {{ 'PASSED' if output_test.rc == 0 else 'FAILED - Check Elasticsearch connection' }}"
+          - "Service Status: {{ 'RUNNING' if service_status.status.ActiveState == 'active' else 'NOT RUNNING' }}"
+          - "Elasticsearch Hosts: {{ elasticsearch_hosts | join(', ') }}"
+          - "Protocol: {{ elasticsearch_protocol }}"
+
+    - name: Setup Elasticsearch index template
+      command: metricbeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts={{ elasticsearch_hosts | to_json }}'
+      when: 
+        - metricbeat_conf_template_enabled
+        - config_test.rc == 0
+      run_once: true
+      ignore_errors: yes
+
+    - name: Display final status
+      debug:
+        msg: |
+          Metricbeat installation completed!
+          
+          Next steps:
+          1. Verify logs: tail -f {{ metricbeat_conf_logging.files.path }}/{{ metricbeat_conf_logging.files.name }}
+          2. Check service: systemctl status metricbeat
+          3. Monitor metrics in Elasticsearch: {{ elasticsearch_hosts | join(', ') }}
