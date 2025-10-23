@@ -7,7 +7,7 @@
   vars:
     users:
       - username: testuser101
-        password: $6ertLiH5eUGk # Mật khẩu mới đã được mã hóa bằng SHA-512 Abc@4321
+        password: $6$qGDk5iGbvpIGS1rZ$4gflnyd2Z/cTuBwhFmNvD9Pz8myUPecpIkvdlieZ9Iv9UzUTyPm5ABNWcfXvZF6MZQ/4z2EfcAFNGnPC9Oipz/ # Mật khẩu mới đã được mã hóa bằng SHA-512 Abc@4321
         update_password: always
         comment: Test User 100
         shell: /bin/bash
