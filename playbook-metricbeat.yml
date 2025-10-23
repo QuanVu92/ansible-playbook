@@ -17,18 +17,12 @@
     environment: "production"
     datacenter: "dc1"
 
-    # Metricbeat Role Variables
+    # Metricbeat Package and Service
     metricbeat_package_state: "latest"
     metricbeat_service_enabled: yes
     metricbeat_service_status: "started"
-    metricbeat_repo_manage: yes
-
-    # Configuration Management
-    metricbeat_conf_manage: yes
-    metricbeat_conf_elasticsearch_enabled: true
-    metricbeat_conf_elasticsearch_hosts: "{{ elasticsearch_hosts }}"
-    metricbeat_conf_dashboards_enabled: false
     metricbeat_conf_template_enabled: true
+    metricbeat_log_level: "info"
 
     # System Monitoring Configuration
     metricbeat_conf_system_enabled: true
@@ -45,20 +39,15 @@
       - socket_summary
 
     # Docker Monitoring Configuration
-    metricbeat_conf_docker_enabled: "{{ metricbeat_conf_docker_installed }}"
-    metricbeat_conf_docker_hosts:
-      - "unix:///var/run/docker.sock"
     metricbeat_conf_docker_period: "10s"
 
     # Nginx Monitoring Configuration
-    metricbeat_conf_nginx_enabled: "{{ metricbeat_conf_nginx_installed }}"
     metricbeat_conf_nginx_hosts:
       - "http://127.0.0.1"
     metricbeat_conf_nginx_status_path: "nginx_status"
     metricbeat_conf_nginx_period: "10s"
 
     # PostgreSQL Monitoring Configuration
-    metricbeat_conf_postgresql_enabled: "{{ metricbeat_conf_postgresql_installed }}"
     metricbeat_conf_postgresql_hosts:
       - "postgres://localhost:5432"
     metricbeat_conf_postgresql_period: "10s"
@@ -92,38 +81,7 @@
         hosts: ["127.0.0.1:27017"]
         metricsets: ["dbstats", "status"]
 
-    # Custom Metricbeat Configuration Override
-    metricbeat_conf_extra:
-      output:
-        elasticsearch:
-          hosts: "{{ elasticsearch_hosts }}"
-          protocol: "{{ elasticsearch_protocol }}"
-          username: "{{ elasticsearch_username }}"
-          password: "{{ elasticsearch_password }}"
-          preset: balanced
-          ssl:
-            certificate_authorities: "{{ elasticsearch_ssl_certificate_authorities }}"
-      processors:
-        - add_host_metadata: ~
-        - add_cloud_metadata: ~
-        - add_docker_metadata: ~
-        - add_kubernetes_metadata: ~
-      tags: ["{{ environment }}", "metricbeat"]
-      fields:
-        env: "{{ environment }}"
-        datacenter: "{{ datacenter }}"
-      fields_under_root: false
-      http:
-        enabled: false
-        port: 5066
-      monitoring:
-        enabled: false
-      queue:
-        mem:
-          events: 4096
-          flush:
-            min_events: 512
-            timeout: 5s
+
 
   pre_tasks:
     - name: Update package cache (Debian/Ubuntu)
@@ -192,20 +150,182 @@
             enabled: yes
           when: ansible_os_family == "RedHat"
 
-    - name: Deploy Metricbeat using role
-      include_role:
-        name: ansible-role-metricbeat
+    - name: Install metricbeat package
+      package:
+        name: metricbeat
+        state: "{{ metricbeat_package_state }}"
 
-    - name: Create enhanced Metricbeat configuration
-      template:
-        src: "{{ playbook_dir }}/roles/ansible-role-metricbeat/templates/metricbeat.yml.j2"
+    - name: Create metricbeat main configuration
+      copy:
+        content: |
+          # Ansible managed - Metricbeat Configuration
+          
+          metricbeat.config.modules:
+            path: /etc/metricbeat/modules.d/*.yml
+            reload.enabled: false
+          
+          output.elasticsearch:
+            hosts: {{ elasticsearch_hosts | to_json }}
+            protocol: "{{ elasticsearch_protocol }}"
+            username: "{{ elasticsearch_username }}"
+            password: "{{ elasticsearch_password }}"
+            preset: balanced
+            ssl:
+              certificate_authorities: "{{ elasticsearch_ssl_certificate_authorities }}"
+          
+          setup.template:
+            enabled: {{ metricbeat_conf_template_enabled | lower }}
+            settings:
+              index.number_of_shards: 1
+              index.codec: best_compression
+          
+          processors:
+            - add_host_metadata: ~
+            - add_cloud_metadata: ~
+            - add_docker_metadata: ~
+            - add_kubernetes_metadata: ~
+          
+          tags: ["{{ environment }}", "metricbeat"]
+          fields:
+            env: "{{ environment }}"
+            datacenter: "{{ datacenter }}"
+          fields_under_root: false
+          
+          logging:
+            level: {{ metricbeat_log_level | default('info') }}
+            to_files: true
+            files:
+              path: /var/log/metricbeat
+              name: metricbeat
+              keepfiles: 7
+              permissions: 0644
+          
+          queue.mem:
+            events: 4096
+            flush.min_events: 512
+            flush.timeout: 5s
         dest: /etc/metricbeat/metricbeat.yml
         owner: root
         group: root
         mode: '0600'
         backup: yes
       notify: restart metricbeat
-      when: metricbeat_conf_manage
+
+    - name: Collect package facts for auto-detection
+      package_facts:
+        manager: auto
+
+    - name: Check if Docker is installed
+      set_fact:
+        docker_installed: "{{ ['docker', 'docker-ce', 'docker.io', 'docker-engine'] | intersect(ansible_facts.packages.keys() | list) | length > 0 }}"
+
+    - name: Check if Nginx is installed
+      set_fact:
+        nginx_installed: "{{ 'nginx' in ansible_facts.packages }}"
+
+    - name: Check if PostgreSQL is installed
+      set_fact:
+        postgresql_installed: "{{ 'postgresql-server' in ansible_facts.packages or 'postgresql' in ansible_facts.packages }}"
+
+    - name: Configure System module
+      copy:
+        content: |
+          ---
+          - module: system
+            metricsets: {{ metricbeat_conf_system_metricsets | to_json }}
+            enabled: {{ metricbeat_conf_system_enabled | lower }}
+            period: 10s
+            processes: ['.*']
+            process.include_top_n:
+              by_cpu: 5
+              by_memory: 5
+            cpu.metrics: ["percentages", "normalized_percentages"]
+        dest: /etc/metricbeat/modules.d/system.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Configure Docker module
+      copy:
+        content: |
+          ---
+          - module: docker
+            metricsets:
+              - container
+              - cpu
+              - diskio
+              - healthcheck
+              - info
+              - image
+              - memory
+              - network
+            hosts: ["unix:///var/run/docker.sock"]
+            period: "{{ metricbeat_conf_docker_period }}"
+            enabled: {{ docker_installed | lower }}
+        dest: /etc/metricbeat/modules.d/docker.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Configure Nginx module
+      copy:
+        content: |
+          ---
+          - module: nginx
+            metricsets:
+              - stubstatus
+            hosts: {{ metricbeat_conf_nginx_hosts | to_json }}
+            period: "{{ metricbeat_conf_nginx_period }}"
+            enabled: {{ nginx_installed | lower }}
+            server_status_path: "{{ metricbeat_conf_nginx_status_path }}"
+        dest: /etc/metricbeat/modules.d/nginx.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Configure PostgreSQL module
+      copy:
+        content: |
+          ---
+          - module: postgresql
+            metricsets:
+              - database
+              - bgwriter
+              - activity
+            hosts: {{ metricbeat_conf_postgresql_hosts | to_json }}
+            period: "{{ metricbeat_conf_postgresql_period }}"
+            enabled: {{ postgresql_installed | lower }}
+            {% if metricbeat_conf_postgresql_user is defined and metricbeat_conf_postgresql_pass is defined %}
+            user: "{{ metricbeat_conf_postgresql_user }}"
+            password: "{{ metricbeat_conf_postgresql_pass }}"
+            {% endif %}
+        dest: /etc/metricbeat/modules.d/postgresql.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart metricbeat
+
+    - name: Configure additional modules
+      copy:
+        content: |
+          ---
+          {{ metricbeat_conf_modules_extra | to_nice_yaml }}
+        dest: /etc/metricbeat/modules.d/additional.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart metricbeat
+      when: metricbeat_conf_modules_extra | length > 0
+
+    - name: Enable and start metricbeat service
+      systemd:
+        name: metricbeat
+        state: "{{ metricbeat_service_status }}"
+        enabled: "{{ metricbeat_service_enabled }}"
+        daemon_reload: yes
 
   handlers:
     - name: restart metricbeat
@@ -217,7 +337,7 @@
   post_tasks:
     - name: Ensure log directory exists
       file:
-        path: "{{ metricbeat_conf_logging.files.path }}"
+        path: /var/log/metricbeat
         state: directory
         owner: root
         group: root
@@ -256,7 +376,13 @@
           - "Protocol: {{ elasticsearch_protocol }}"
 
     - name: Setup Elasticsearch index template
-      command: metricbeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts={{ elasticsearch_hosts | to_json }}'
+      command: >
+        metricbeat setup --template 
+        -E output.logstash.enabled=false 
+        -E 'output.elasticsearch.hosts={{ elasticsearch_hosts | to_json }}'
+        -E 'output.elasticsearch.protocol={{ elasticsearch_protocol }}'
+        -E 'output.elasticsearch.username={{ elasticsearch_username }}'
+        -E 'output.elasticsearch.password={{ elasticsearch_password }}'
       when: 
         - metricbeat_conf_template_enabled
         - config_test.rc == 0
@@ -269,6 +395,6 @@
           Metricbeat installation completed!
           
           Next steps:
-          1. Verify logs: tail -f {{ metricbeat_conf_logging.files.path }}/{{ metricbeat_conf_logging.files.name }}
+          1. Verify logs: tail -f /var/log/metricbeat/metricbeat
           2. Check service: systemctl status metricbeat
           3. Monitor metrics in Elasticsearch: {{ elasticsearch_hosts | join(', ') }}
