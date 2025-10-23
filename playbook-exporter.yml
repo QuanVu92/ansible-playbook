@@ -23,21 +23,166 @@
         msg: "Systemd available: {{ systemd_check.rc == 0 }}"
       tags: debug
 
-  roles:
-    - role: ansible-role-node_exporter
   vars:
     node_exporter_version: "1.6.1"
-    node_exporter_binary_local_dir: ""
-    node_exporter_skip_install: false
-    node_exporter_web_listen_address: "0.0.0.0:9100"
-    node_exporter_web_telemetry_path: "/metrics"
-    node_exporter_textfile_dir: "/var/lib/node_exporter"
-    node_exporter_tls_server_config: {}
-    node_exporter_http_server_config: {}
-    node_exporter_basic_auth_users: {}
-    node_exporter_enabled_collectors:
-      - systemd
-    node_exporter_disabled_collectors: []
+    node_exporter_user: "node_exporter"
+    node_exporter_group: "node_exporter"
     node_exporter_binary_install_dir: "/usr/local/bin"
-    node_exporter_system_group: "node-exp"
-    node_exporter_system_user: "{{ node_exporter_system_group }}"
+    node_exporter_config_dir: "/etc/node_exporter"
+    node_exporter_textfile_dir: "/var/lib/node_exporter"
+
+  tasks:
+    - name: Create node_exporter group
+      group:
+        name: "{{ node_exporter_group }}"
+        system: yes
+        state: present
+
+    - name: Create node_exporter user
+      user:
+        name: "{{ node_exporter_user }}"
+        group: "{{ node_exporter_group }}"
+        system: yes
+        shell: /bin/false
+        home: /var/lib/node_exporter
+        createhome: no
+        state: present
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ node_exporter_user }}"
+        group: "{{ node_exporter_group }}"
+        mode: '0755'
+      loop:
+        - "{{ node_exporter_config_dir }}"
+        - "{{ node_exporter_textfile_dir }}"
+
+    - name: Check if node_exporter is already installed
+      stat:
+        path: "{{ node_exporter_binary_install_dir }}/node_exporter"
+      register: node_exporter_installed
+
+    - name: Get current node_exporter version
+      command: "{{ node_exporter_binary_install_dir }}/node_exporter --version"
+      register: current_version
+      changed_when: false
+      failed_when: false
+      when: node_exporter_installed.stat.exists
+
+    - name: Download and install node_exporter
+      when: not node_exporter_installed.stat.exists or (current_version.stdout is defined and node_exporter_version not in current_version.stdout)
+      block:
+        - name: Download node_exporter
+          get_url:
+            url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+            dest: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+            mode: '0644'
+
+        - name: Extract node_exporter
+          unarchive:
+            src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+            dest: "/tmp"
+            remote_src: yes
+
+        - name: Copy node_exporter binary
+          copy:
+            src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+            dest: "{{ node_exporter_binary_install_dir }}/node_exporter"
+            owner: root
+            group: root
+            mode: '0755'
+            remote_src: yes
+
+        - name: Clean up downloaded files
+          file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+            - "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64"
+
+    - name: Create node_exporter systemd service
+      copy:
+        content: |
+          [Unit]
+          Description=Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User={{ node_exporter_user }}
+          Group={{ node_exporter_group }}
+          Type=simple
+          ExecStart={{ node_exporter_binary_install_dir }}/node_exporter \
+            --web.listen-address=0.0.0.0:9100 \
+            --web.telemetry-path=/metrics \
+            --collector.textfile.directory={{ node_exporter_textfile_dir }} \
+            --collector.systemd \
+            --collector.processes \
+            --collector.filesystem.ignored-mount-points="^/(dev|proc|sys|var/lib/docker/.+)($|/)" \
+            --collector.filesystem.ignored-fs-types="^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+          
+          SyslogIdentifier=node_exporter
+          Restart=always
+          RestartSec=1
+          StartLimitInterval=0
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/node_exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart node_exporter
+
+    - name: Enable and start node_exporter service
+      systemd:
+        name: node_exporter
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+  handlers:
+    - name: restart node_exporter
+      systemd:
+        name: node_exporter
+        state: restarted
+        daemon_reload: yes
+
+  post_tasks:
+    - name: Wait for node_exporter to start
+      wait_for:
+        port: 9100
+        host: "0.0.0.0"
+        delay: 5
+        timeout: 30
+
+    - name: Test node_exporter endpoint
+      uri:
+        url: "http://{{ inventory_hostname }}:9100/metrics"
+        method: GET
+        status_code: 200
+      register: metrics_test
+      failed_when: false
+
+    - name: Display installation results
+      debug:
+        msg:
+          - "=== Node Exporter Installation Results ==="
+          - "Service Status: {{ 'RUNNING' if ansible_facts.services['node_exporter.service'].state == 'running' else 'NOT RUNNING' }}"
+          - "Port 9100: {{ 'LISTENING' if metrics_test.status == 200 else 'NOT ACCESSIBLE' }}"
+          - "Metrics Endpoint: http://{{ inventory_hostname }}:9100/metrics"
+          - "Version: {{ node_exporter_version }}"
+
+    - name: Show next steps
+      debug:
+        msg: |
+          Node Exporter installation completed!
+          
+          Next steps:
+          1. Check service: systemctl status node_exporter
+          2. View metrics: curl http://{{ inventory_hostname }}:9100/metrics
+          3. Add to Prometheus config:
+             - targets: ['{{ inventory_hostname }}:9100']
