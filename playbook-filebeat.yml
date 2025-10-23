@@ -167,10 +167,9 @@
         update_cache: no
       when: ansible_os_family == "Debian"
 
-    - name: Update apt cache after adding repository (Debian/Ubuntu)
+    - name: Force update apt cache after adding repository (Debian/Ubuntu)
       apt:
         update_cache: yes
-        cache_valid_time: 3600
       when: ansible_os_family == "Debian"
 
     - name: Import Elastic GPG key (RedHat/CentOS)
